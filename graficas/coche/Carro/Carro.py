@@ -78,8 +78,8 @@ class Carro:
         # angulo de rotacion inicial para las llantas frontales y traseras
         self.LlantaT_angZ = 0.0
         # variables para llantas frontales
-        self.LlantaFL_pos = np.array([3.5, -0.4, -1.6])
-        self.LlantaFR_pos = np.array([3.5, -0.4, 1.6])
+        self.LlantaFL_pos = np.array([3.4, -0.5, -1.6])
+        self.LlantaFR_pos = np.array([3.4, -0.5, 1.6])
         # Distancia entre ejes
         self.L = abs(self.LlantaFL_pos[0] - self.LlantaT_pos[0]) * self.Scale
         # Intervalo de tiempo por frame
@@ -106,8 +106,26 @@ class Carro:
     # T_llanta: vector para ubicar la llanta en su posicion
     # id_llanta: para identificar si es llanta izquierda(1) o derecha(2)
     def llantaFrontal(self, T_llanta, id_llanta):
-        pass
-        # self.Ll_F_Ry
+        glPushMatrix() # global e2 -> eje delantero
+        cF = self.cos_angF # cos dirección
+        sF = self.sin_angF # sin dirección
+        c = math.cos(self.LlantaT_angZ) # cos rodado
+        s = math.sin(self.LlantaT_angZ) # sin rodado
+        M = self.M_Llanta_F
+        
+        M[0, 0] = cF * c
+        M[0, 1] = -cF * s
+        M[0, 2] = sF
+        M[1, 0] = s
+        M[1, 1] = c
+        M[2, 0] = -sF * c
+        M[2, 1] = sF * s
+        M[2, 2] = cF
+        M[0:3, 3] = T_llanta
+        self._mult(M)
+        self.component[id_llanta].render()
+        glPopMatrix()
+        
     
     # llenar las tres matrices y llamar a render
     def draw(self):
@@ -116,6 +134,9 @@ class Carro:
         # Se actualizan los componentes de la matriz optimizada
         self.cos_ang = math.cos(math.radians(self.Body_Ry))
         self.sin_ang = math.sin(math.radians(self.Body_Ry))
+        # se calculan ángulos de dirección una vez por frame
+        self.cos_angF = math.cos(math.radians(self.Ll_F_Ry))
+        self.sin_angF = math.sin(math.radians(self.Ll_F_Ry))
         
         # e1 -> marco del coche
         M = self.M_Carroceria # modifica matriz guardada en obj, sin crear nueva
@@ -142,6 +163,10 @@ class Carro:
         self._mult(Mt)
         self.component[3].render() # dibuja llantas traseras
         glPopMatrix() # regresa a e1 carrocería
+        
+        # e2 -> llantas frontales
+        self.llantaFrontal(self.LlantaFL_pos, 1)
+        self.llantaFrontal(self.LlantaFR_pos, 2)
 
         glPopMatrix() # e0 -> volvemos a estado de mundo
         
