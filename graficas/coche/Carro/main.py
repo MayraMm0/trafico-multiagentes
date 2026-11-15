@@ -54,6 +54,7 @@ radius = 250
 
 pygame.init()
 
+# Dibuja los ejes de referencia
 def Axis():
     glLineWidth(3.0)
     #X axis in red
@@ -88,9 +89,10 @@ def Init():
 
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
+    # coloca la cámara
     gluLookAt(EYE_X,EYE_Y,EYE_Z,CENTER_X,CENTER_Y,CENTER_Z,UP_X,UP_Y,UP_Z)
     glClearColor(0,0,0,0)
-    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_DEPTH_TEST) # que lo cercano tape a lo lejano
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     glShadeModel(GL_SMOOTH)
         
@@ -101,6 +103,7 @@ def Init():
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
     glEnable(GL_COLOR_MATERIAL)
+    glEnable(GL_NORMALIZE)
     
     # Se generan los componentes graficos del carro y se gregan
     # al array objetos
@@ -112,11 +115,13 @@ def Init():
     objetos[2].generate()
     objetos.append(OBJ("llantas_traseras.obj", swapyz=True))
     objetos[3].generate()
+    # las piezas se cargan una sola vez y los n coches comparten
     
     # se genera un carro
     for i in range(ncarros):
         carros.append(Carro(DimBoard, 1.0, 10.0))
         carros[-1].getComponents(objetos)
+        
 
 #Se mueve al observador circularmente al rededor del plano XZ a una altura fija (EYE_Y)
 def lookat():
@@ -140,10 +145,10 @@ def display():
     glVertex3d(DimBoard, -20, -DimBoard)
     glEnd()
         
-    # Se dibuja el carro
+    #Se dibuja el carro
     for car in carros:
-        car.update()
-        car.draw()
+        car.update() # lógica: nueva posición y ángulos
+        car.draw()   # se pinta con esos valores
     
 done = False
 Init()
@@ -163,6 +168,7 @@ while not done:
             theta += -1.0
         lookat()
     # solo se controla el ultimo carrito en el array
+    # setAvanza()/setRota() son peticiones, el movimiento real ocurre en update()
     if keys[pygame.K_w]:
         carros[-1].setAvanza()
     if keys[pygame.K_a]:
@@ -177,7 +183,7 @@ while not done:
 
     display()
 
-    pygame.display.flip()
+    pygame.display.flip() # intercambia el buffer donde se dibujó con el que se muestra (doble buffer) 
     pygame.time.wait(10)
 
 pygame.quit()

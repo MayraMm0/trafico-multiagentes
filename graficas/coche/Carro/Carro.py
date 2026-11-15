@@ -49,6 +49,7 @@ class Carro:
         # self.M_Carroceria = np.identity(4, dtype=np.float32)
         # Para optimizar, se declaran las matrices identidad traspuestas
         self.M_Carroceria = np.identity(4, dtype=np.float32).T
+        self.M_Carroceria[1, 1] = self.Scale
         # Matriz para las llantas traseras
         self.M_Llantas_traseras = np.identity(4, dtype=np.float32).T
         # Matriz para la llanta frontal izquierda
@@ -58,13 +59,14 @@ class Carro:
 
         # Se define el radio base del objeto llanta (depende del tamaño del objeto grafico)
         # (se debe modificar manualmente dependiendo de dicho tamaño)
-        self.Llanta_radio_base = 1.0
+        self.Llanta_radio_base = 0.707
         # Radio de la llanta considerando la escala del carro
         self.Llanta_radio = self.Llanta_radio_base * self.Scale
         # Traslacion base del origen a la posicon del eje trasero del carro
         # Este vector depende de la escala del carro
-        self.LlantaT_dist = self.Scale * np.array([-2.3,-0.5,0])
+        self.LlantaT_dist = np.array([-2.3,-0.5,0.0]) # eje trasero
         self.LlantaT_pos = np.copy(self.LlantaT_dist)
+        self.M_Llantas_traseras[0:3, 3] = self.LlantaT_pos # la posición del eje en el coche nunca cambia, así que se fija una vez
         # Para que las llantas tengan el efecto de girar hacia adelante
         # se debe calcular el angulo de rotacion de las mismas a partir de la formula
         # theta = (360 * d) / (2*pi*r), donde d es la distancia a recorrer y r el 
@@ -76,23 +78,27 @@ class Carro:
         # angulo de rotacion inicial para las llantas frontales y traseras
         self.LlantaT_angZ = 0.0
         # variables para llantas frontales
-        self.LlantaFL_pos = self.Scale * np.array([3.5, -0.5, -1.5])
-        self.LlantaFR_pos = self.Scale * np.array([3.5, -0.5, 1.5])
+        self.LlantaFL_pos = np.array([3.5, -0.4, -1.6])
+        self.LlantaFR_pos = np.array([3.5, -0.4, 1.6])
         # Distancia entre ejes
-        self.L = abs(self.LlantaFL_pos[0] - self.LlantaT_pos[0])
+        self.L = abs(self.LlantaFL_pos[0] - self.LlantaT_pos[0]) * self.Scale
         # Intervalo de tiempo por frame
         self.dt = 100
 
+    def _mult(self, M):
+        glMultMatrixf(M.T)
+        
     def getComponents(self, comp):
         self.component = comp
         
     def setAvanza(self):
         self.Avanza = True
-        
+    
+    # variar ang con límite
     def setRota(self, dir):
         pass
 
-        
+    # Avanzar según dirección y vel, y que se consuma(condición de no avanzar)
     def update(self):
         if self.Avanza:
             pass
@@ -103,13 +109,40 @@ class Carro:
         pass
         # self.Ll_F_Ry
     
+    # llenar las tres matrices y llamar a render
     def draw(self):
-        glPushMatrix() #e0
         # Se define la maquina de estados
+        glPushMatrix() # e0 -> guarda estado de mundo 
         # Se actualizan los componentes de la matriz optimizada
         self.cos_ang = math.cos(math.radians(self.Body_Ry))
         self.sin_ang = math.sin(math.radians(self.Body_Ry))
+        
+        # e1 -> marco del coche
+        M = self.M_Carroceria # modifica matriz guardada en obj, sin crear nueva
+        S = self.Scale
+        M[0, 0] = self.cos_ang * S
+        M[0, 2] = self.sin_ang * S
+        M[2, 0] = -self.sin_ang * S
+        M[2,2] = self.cos_ang * S
+        M[0, 3] = self.Position[0]
+        M[1, 3] = self.Position[1]
+        M[2, 3] = self.Position[2]
+        self._mult(M)
+        self.component[0].render() # carrocería
+        
+        # e2 -> Llantas traseras 
+        glPushMatrix()
+        c = math.cos(self.LlantaT_angZ)
+        s = math.sin(self.LlantaT_angZ)
+        Mt = self.M_Llantas_traseras
+        Mt[0, 0] = c
+        Mt[0, 1] = -s
+        Mt[1, 0] = s
+        Mt[1, 1] = c
+        self._mult(Mt)
+        self.component[3].render() # dibuja llantas traseras
+        glPopMatrix() # regresa a e1 carrocería
 
-        glPopMatrix() # e0
+        glPopMatrix() # e0 -> volvemos a estado de mundo
         
         

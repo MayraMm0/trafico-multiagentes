@@ -2,7 +2,7 @@ import os
 import pygame
 from OpenGL.GL import *
 
-
+# cada pieza es un ONJ separado
 class OBJ:
     generate_on_init = True
     @classmethod
@@ -54,23 +54,23 @@ class OBJ:
             if line.startswith('#'): continue
             values = line.split()
             if not values: continue
-            if values[0] == 'v':
+            if values[0] == 'v': #vértice (x,y,z)
                 v = list(map(float, values[1:4]))
                 if swapyz:
                     v = v[0], v[2], v[1]
                 self.vertices.append(v)
-            elif values[0] == 'vn':
+            elif values[0] == 'vn': #normal (para iluminación)
                 v = list(map(float, values[1:4]))
                 if swapyz:
                     v = v[0], v[2], v[1]
                 self.normals.append(v)
-            elif values[0] == 'vt':
+            elif values[0] == 'vt': # coordenada de textura (u,v)
                 self.texcoords.append(list(map(float, values[1:3])))
             elif values[0] in ('usemtl', 'usemat'):
-                material = values[1]
+                material = values[1] # materal activo para las caras siguientes
             elif values[0] == 'mtllib':
                 self.mtl = self.loadMaterial(os.path.join(dirname, values[1]))
-            elif values[0] == 'f':
+            elif values[0] == 'f': # cara
                 face = []
                 texcoords = []
                 norms = []
@@ -90,7 +90,7 @@ class OBJ:
             self.generate()
 
     def generate(self):
-        self.gl_list = glGenLists(1)
+        self.gl_list = glGenLists(1) # crea display list
         glNewList(self.gl_list, GL_COMPILE)
         glEnable(GL_TEXTURE_2D)
         glFrontFace(GL_CCW)
@@ -116,6 +116,7 @@ class OBJ:
         glDisable(GL_TEXTURE_2D)
         glEndList()
 
+    # la lista es geometría fija, moverla se hace antes (con matrices) antes de llamar a render
     def render(self):
         glCallList(self.gl_list)
 
