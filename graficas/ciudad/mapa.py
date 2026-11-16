@@ -1,1 +1,137 @@
-# MAPA, leyenda, validar_mapa, celda_a_mundo  ← compartido con AgentPy
+from collections import deque
+
+CELL = 2.0                       # metros por celda
+
+EDIFICIO, ARBOL = '#', '*'
+CRUCE, GIRO_DER, GIRO_IZQ = '+', 'R', 'L'
+FLECHAS = {'>': (0, 1), '<': (0, -1), '^': (-1, 0), 'v': (1, 0)}   # (dfila, dcol)
+
+MAPA_TXT = """
+000000000000000000000000000
+1>>>>>>>>>>>>RR>>>>>>>RR>>1
+1>>>>>>>>>>>>RR>>>>>>>RR>>1
+1<<<<<LL<<<LL++<<<<<<<++<<1
+1<<<<<LL<<<LL++<<<<<<<++<<1
+0#####vv###^^^^#######vv**0
+0#####vv###^^^^#######vv**0
+0#####vv###^^^^#######vv**0
+0#####vv###^^^^#######vv**0
+1<<<<<<<<<<++++<<<<<<<RR<<1
+1<<<<<<<<<<++++<<<<<<<RR<<1
+1RR>>>>>>>>++++>>>>>>>RR>>1
+1RR>>>>>>>>++++>>>>>>>RR>>1
+0vv###^^###^^^^#######vv**0
+0vv###^^###^^^^#######vv**0
+0vv###^^###^^^^#######vv**0
+0vv###^^###^^^^#######vv**0
+1>>>>>LL>>>LL^^#######vv**0
+1>>>>>LL>>>LL^^#######vv**0
+0************RR<<<<<<<RR**0
+0************RR<<<<<<<RR**0
+000000000000000000000000000
+"""
+
+def cargar_mapa(txt):
+    lines = txt.strip('\n').split('\n')
+    mapa = []
+    izq, der = "" , ""
+
+    for line in lines[1:-1]:
+        izq = izq + line[0]
+        der = der + line[-1]
+        mapa.append(line.strip("01"))
+
+    borde = {
+        'arriba': lines[0][1:-1],
+        'abajo': lines[1][1:-1],
+        'izq': izq,
+        'der': der,
+    }
+    assert len(borde['arriba']) == len(borde['abajo']) == 25
+    assert len(borde['izq']) == len(borde['der']) == 20
+
+    return mapa, borde
+
+MAPA, BORDE = cargar_mapa(MAPA_TXT)
+FILAS, COLS = len(MAPA), len(MAPA[0])
+
+def en_mapa(f, c):
+    if 0 <= f < FILAS:
+        if 0 <= c < COLS:
+            return True
+    return None
+
+
+def es_calle(f, c):
+    if en_mapa(f, c):
+        if MAPA[f][c] not in '#*':
+            return True
+    return False
+
+
+def borde_abierto(f, c, d):
+    if d == (-1, 0) :
+        return BORDE['arriba'][c] == '1'
+    elif d == ( 1, 0):
+        return BORDE['abajo'][c] == '1'
+    elif d == ( 0,-1):
+        return BORDE['izq'][f] == '1'
+    elif d == ( 0, 1):
+        return BORDE['der'][f] == '1'
+    return None
+
+def girar_der(d):
+    df, dc = d
+    return dc, -df
+
+def girar_izq(d):
+    df, dc = d
+    return -dc, df
+
+def celda_a_mundo(f, c):
+    x = c*CELL + CELL/2 - COLS*CELL/2
+    z = f*CELL + CELL/2 - FILAS*CELL/2
+    return x, z
+
+'''
+def opciones(f, c, d, ya_giro):
+    """Desde la celda (f,c) yendo en sentido d: ¿a dónde puedo ir?
+       Regresa lista de (f2, c2, d2, ya_giro2); (None, None, d2, _) = sale del mapa."""
+    # TODO: decidir sentidos posibles según el carácter:
+    #       flecha → [su sentido]         ya_giro → [d]
+    #       'R' → [d, girar_der(d)]      'L' → [d, girar_izq(d)]    '+' → [d, der, izq]
+    # TODO: para cada sentido candidato calcular la celda siguiente:
+    #       fuera del mapa  → válida solo si borde_abierto
+    #       '#' o '*'       → descartar
+    #       flecha en contra (su sentido == -d2) → descartar
+    # TODO: ya_giro2 = False si la siguiente es flecha; si no, ya_giro or (d2 != d)
+
+def calcular_entradas():
+    # TODO: recorrer celdas de calle en la orilla con borde abierto de ese lado
+    # TODO: si es flecha → es entrada si apunta hacia adentro
+    # TODO: si es R/L/+ → avanzar hacia adentro hasta la primera flecha y usar su sentido
+    # TODO: regresar lista de (f, c, sentido)
+
+def calcular_ruta(f, c, d, destino=None):
+    # TODO: BFS sobre estados (f, c, d, ya_giro) usando opciones()
+    # TODO: guardar padre de cada estado para reconstruir el camino
+    # TODO: termina al encontrar una salida (o el 'destino' si se pide)
+    # TODO: regresar lista de celdas [(f, c), ...] o None si no hay ruta
+
+def validar_mapa():
+    # TODO: 20 filas, todas de 25, solo caracteres de la leyenda
+    # TODO: cada entrada tiene ruta a alguna salida
+    # TODO: toda celda de calle aparece en al menos una ruta posible
+    #       (BFS desde todas las entradas a la vez y comparar contra las celdas de calle)
+    # TODO: regresar lista de errores (vacía = todo bien)
+'''
+INTERSECCIONES = []
+SEMAFOROS = [{1,13},{2,13},{4,20},{8,8},{8,22},{12,5},{12,11},{11,13},{12,21}]
+
+if __name__ == "__main__":
+    print(FILAS, COLS)
+    print(BORDE['izq'], BORDE['der'])
+    print(es_calle(0,0), es_calle(4,0), es_calle(19,24))
+    print(celda_a_mundo(0,0), celda_a_mundo(19,24))
+
+    # TODO: imprimir una ruta de ejemplo desde la primera entrada
