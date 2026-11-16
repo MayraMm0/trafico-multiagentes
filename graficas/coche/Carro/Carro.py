@@ -38,6 +38,8 @@ class Carro:
         self.Body_Ry = 0.0
         #rotacion de llantas frontales
         self.Ll_F_Ry = 0.0
+        self.Ll_F_max = 35.0 #giro max en grados
+        self.Ll_F_paso = 2.0 # cuánto cambia ang de dirección por frame
         
         self.cos_ang = 0.0
         self.sin_ang = 0.0
@@ -82,8 +84,13 @@ class Carro:
         self.LlantaFR_pos = np.array([3.4, -0.5, 1.6])
         # Distancia entre ejes
         self.L = abs(self.LlantaFL_pos[0] - self.LlantaT_pos[0]) * self.Scale
+        #Distancia del origen del coche al eje trasero
+        self.d_eje = abs(self.LlantaT_pos[0]) * self.Scale
+        #Estado real del modelo de bicicleta: posición del eje trasero
+        self.P_trasero = self.Position - self.Direction * self.d_eje
         # Intervalo de tiempo por frame
         self.dt = 100
+    
 
     def _mult(self, M):
         glMultMatrixf(M.T)
@@ -94,14 +101,47 @@ class Carro:
     def setAvanza(self):
         self.Avanza = True
     
-    # variar ang con límite
+    # variar ang con límite, dir de las llantas
     def setRota(self, dir):
-        pass
+        self.Rota = dir  # 'L' o 'R'
+        # solo guarda petición porque update ejecuta
 
     # Avanzar según dirección y vel, y que se consuma(condición de no avanzar)
     def update(self):
+        # 0. Dir de las llantas F (volante)
+        if self.Rota == 'L':
+            self.Ll_F_Ry += self.Ll_F_paso # izq es -Z, pero ang positivo
+        elif self.Rota == 'R':
+            self.Ll_F_Ry -= self.Ll_F_paso
+        elif abs(self.Ll_F_Ry) <= self.Ll_F_paso:
+            self.Ll_F_Ry = 0.0
+        else:
+            self.Ll_F_Ry -= math.copysign(self.Ll_F_paso, self.Ll_F_Ry) # regresa al centro
+        
+        # limites
+        self.Ll_F_Ry = max(-self.Ll_F_max, min(self.Ll_F_max, self.Ll_F_Ry))
+        
+        # 1. Giro del cuerpo (solo si avanza) Δθ = (v/L)·tan(δ)
         if self.Avanza:
-            pass
+            dtheta = (self.vel / self.L) * math.tan(math.radians(self.Ll_F_Ry))
+            self.Body_Ry = (self.Body_Ry + math.degrees(dtheta)) % 360.0
+            
+        # 2. Dirección sale del nuevo ángulo del cuerpo/carrocería
+        rad = math.radians(self.Body_Ry)
+        self.Direction[0] = math.cos(rad)
+        self.Direction[2] = -math.sin(rad)
+        
+        # 3. Si hubo petición en frame:
+        # avance del eje trasero y position derivada
+        if self.Avanza:
+            self.P_trasero += self.Direction * self.vel # direction unitario, recorre vel por frame
+            self.LlantaT_angZ += self.LlantaT_angZ_delta
+        self.Position = self.P_trasero + self.Direction * self.d_eje
+        
+        # 4. consumir peticiones para que se verifique cada frame
+        self.Avanza = False    
+        self.Rota = False
+        
     
     # T_llanta: vector para ubicar la llanta en su posicion
     # id_llanta: para identificar si es llanta izquierda(1) o derecha(2)
