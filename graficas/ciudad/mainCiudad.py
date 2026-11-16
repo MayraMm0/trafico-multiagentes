@@ -1,72 +1,94 @@
-
-# loop principal: Init, eventos, display, flip
-# constantes: ventana, cámara, CELL, escalas, colores
-# órbita, vista cenital, zoom
-
-import pygame
+import pygame, math
 from pygame.locals import *
-
-# Cargamos las bibliotecas de OpenGL
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from OpenGL.GLUT import *
 
-import math
-
-# Se carga el archivo de la clase Cubo
-import sys
-
-sys.path.append('..')
-#from Cubo import Cubo
-
-# Import obj loader
+from mapa import MAPA, FILAS, COLS, CELL, es_calle, celda_a_mundo, SEMAFOROS
+# (después) from decoracion import construir_ciudad, dibujar_ciudad
 from objloader import *
 
-screen_width = 1400
-screen_height = 800
-# vc para el obser.
-FOVY = 100.0
-ZNEAR = 0.09
-ZFAR = 2000.0
+SCREEN_W, SCREEN_H = 1400, 800
+FOVY, ZNEAR, ZFAR = 60.0, 1.0, 300.0
+DIM_X = COLS * CELL / 2          # 25
+DIM_Z = FILAS * CELL / 2         # 20
 
-# Variables para definir la posicion del observador
-# gluLookAt(EYE_X,EYE_Y,EYE_Z,CENTER_X,CENTER_Y,CENTER_Z,UP_X,UP_Y,UP_Z)
-EYE_X = 300.0
-EYE_Y = 200.0
-EYE_Z = 300.0
-CENTER_X = 0
-CENTER_Y = 0
-CENTER_Z = 0
-UP_X = 0
-UP_Y = 1
-UP_Z = 0
-# Variables para dibujar los ejes del sistema
-X_MIN = -500
-X_MAX = 500
-Y_MIN = -500
-Y_MAX = 500
-Z_MIN = -500
-Z_MAX = 500
-# Dimension del plano
-DimBoard = 500
+Y_SUELO, Y_CALLE, Y_LINEA = 0.0, 0.05, 0.1
 
-# Variables asociados a los objetos de la clase Cubo
-# cubo = Cubo(DimBoard, 1.0)
-'''
-cubos = []
-ncubos = 20
-objetos = []
-'''
+pasto = (149, 249, 39)
+asfalto = (89, 89, 89)
+cielo = (103, 166, 224)
 
-# Variables para el control del observador
-theta = 0.0
-radius = 300
+X_MIN, X_MAX = -30, 30
+Y_MIN, Y_MAX = -30, 30
+Z_MIN, Z_MAX = -30, 30
+MOSTRAR_EJES = True
 
-pygame.init()
+
+theta   = 45.0      # ángulo de la órbita
+radius  = 40.0      # distancia al centro
+EYE_Y   = 35.0      # altura de la cámara
+cenital = False     # vista desde arriba
+
+EYE_X, EYE_Z = 0.0, 0.0
+CENTER_X, CENTER_Y, CENTER_Z = 0, 0, 0
+UP_X, UP_Y, UP_Z = 0, 1, 0
+
+ALTURA_CENITAL = 60.0
+
+# Límites y velocidades de la cámara
+ALTURA_MIN, ALTURA_MAX = 5.0, 120.0
+RADIO_MIN, RADIO_MAX = 10.0, 120.0
+VEL_GIRO, VEL_ALTURA, VEL_ZOOM = 1.0, 0.5, 0.5
+
+
+def aplicar_camara():
+    global EYE_X, EYE_Z, UP_X, UP_Y, UP_Z
+    if cenital:
+        EYE_X, EYE_Z = 0, 0
+        ojo_y = ALTURA_CENITAL
+        UP_X, UP_Y, UP_Z = 0, 0, -1
+    else:
+        t = math.radians(theta)
+        EYE_X = radius * math.sin(t)
+        EYE_Z = radius * math.cos(t)
+        ojo_y = EYE_Y
+        UP_X, UP_Y, UP_Z = 0, 1, 0
+    glLoadIdentity()
+    gluLookAt(EYE_X, ojo_y, EYE_Z, CENTER_X, CENTER_Y, CENTER_Z, UP_X, UP_Y, UP_Z)
+
+
+def teclas_continuas(keys):
+    global theta, EYE_Y, radius
+    # Girar alrededor de la ciudad
+    if keys[pygame.K_RIGHT]:
+        theta = (theta + VEL_GIRO) % 360
+    if keys[pygame.K_LEFT]:
+        theta = (theta - VEL_GIRO) % 360
+    # Subir / bajar la cámara
+    if keys[pygame.K_UP]:
+        EYE_Y = min(EYE_Y + VEL_ALTURA, ALTURA_MAX)
+    if keys[pygame.K_DOWN]:
+        EYE_Y = max(EYE_Y - VEL_ALTURA, ALTURA_MIN)
+    # Zoom: acercar / alejar
+    if keys[pygame.K_w]:
+        radius = max(radius - VEL_ZOOM, RADIO_MIN)
+    if keys[pygame.K_s]:
+        radius = min(radius + VEL_ZOOM, RADIO_MAX)
+
+
+def tecla_evento(key):
+    global cenital, MOSTRAR_EJES
+    if key == pygame.K_c:
+        cenital = not cenital
+    elif key == pygame.K_e:
+        MOSTRAR_EJES = not MOSTRAR_EJES
+    # (después) elif key == pygame.K_SPACE: cambiar color de semáforos
+    elif key == pygame.K_ESCAPE:
+        return False
+    return True
 
 
 def Axis():
-    glShadeModel(GL_FLAT)
     glLineWidth(3.0)
     # X axis in red
     glColor3f(1.0, 0.0, 0.0)
@@ -89,112 +111,71 @@ def Axis():
     glLineWidth(1.0)
 
 
+def dibujar_suelo():
+    glColor3ub(*pasto)
+    glBegin(GL_QUADS)
+    glVertex3f(-DIM_X, Y_SUELO, -DIM_Z)
+    glVertex3f(-DIM_X, Y_SUELO,  DIM_Z)
+    glVertex3f( DIM_X, Y_SUELO,  DIM_Z)
+    glVertex3f( DIM_X, Y_SUELO, -DIM_Z)
+    glEnd()
+
+
+def dibujar_calles():
+    m = CELL / 2
+    glColor3ub(*asfalto)
+    glBegin(GL_QUADS)              # un solo glBegin para todas las celdas (más rápido)
+    for f in range(FILAS):
+        for c in range(COLS):
+            if es_calle(f, c):
+                x, z = celda_a_mundo(f, c)
+                glVertex3f(x - m, Y_CALLE, z - m)
+                glVertex3f(x - m, Y_CALLE, z + m)
+                glVertex3f(x + m, Y_CALLE, z + m)
+                glVertex3f(x + m, Y_CALLE, z - m)
+    glEnd()
+    # (en el inciso 9 esto pasa a una display list)
+
+
 def Init():
-    screen = pygame.display.set_mode(
-        (screen_width, screen_height), DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("OpenGL: cubos")
+    pygame.display.set_mode((SCREEN_W, SCREEN_H), DOUBLEBUF | OPENGL)
+    pygame.display.set_caption("Ciudad")
 
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(FOVY, screen_width / screen_height, ZNEAR, ZFAR)
+    gluPerspective(FOVY, SCREEN_W / SCREEN_H, ZNEAR, ZFAR)
 
     glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
-    gluLookAt(EYE_X, EYE_Y, EYE_Z, CENTER_X, CENTER_Y, CENTER_Z, UP_X, UP_Y, UP_Z)
-    glClearColor(0, 0, 0, 0)
+    glClearColor(cielo[0] / 255, cielo[1] / 255, cielo[2] / 255, 1.0)
     glEnable(GL_DEPTH_TEST)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-
-    '''
-    for i in range(ncubos):
-        cubos.append(Cubo(DimBoard, 1.0, 5.0))
-    #se le pasan a los objetos el arreglo de cubos
-    for obj in cubos:
-        obj.getCubos(cubos)
-    '''
-
-    '''
-    #glLightfv(GL_LIGHT0, GL_POSITION,  (-40, 200, 100, 0.0))
-    glLightfv(GL_LIGHT0, GL_POSITION,  (0, 200, 0, 0.0))
-    glLightfv(GL_LIGHT0, GL_AMBIENT, (0.5, 0.5, 0.5, 1.0))
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, (0.5, 0.5, 0.5, 1.0))
-    glEnable(GL_LIGHTING)
-    glEnable(GL_LIGHT0)
-    glEnable(GL_COLOR_MATERIAL)
-    glShadeModel(GL_SMOOTH)           # most obj files expect to be smooth-shaded        
-    objetos.append(OBJ("carroceria.obj", swapyz=True))
-    objetos[0].generate()
-'''
-
-
-# Se mueve al observador circularmente al rededor del plano XZ a una altura fija (EYE_Y)
-def lookat():
-    global EYE_X
-    global EYE_Z
-    global radius
-    EYE_X = radius * (math.cos(math.radians(theta)) + math.sin(math.radians(theta)))
-    EYE_Z = radius * (-math.sin(math.radians(theta)) + math.cos(math.radians(theta)))
-    glLoadIdentity()
-    gluLookAt(EYE_X, EYE_Y, EYE_Z, CENTER_X, CENTER_Y, CENTER_Z, UP_X, UP_Y, UP_Z)
-
-
-def displayobj():
-    '''
-    glPushMatrix()
-    #correcciones para dibujar el objeto en plano XZ
-    #esto depende de cada objeto
-    glRotatef(-90.0, 1.0, 0.0, 0.0)
-    glTranslatef(0.0, 0.0, 15.0)
-    glScale(10.0,10.0,10.0)
-    objetos[0].render()
-    glPopMatrix()
-    '''
+    glShadeModel(GL_FLAT)
+    # (después, al cargar .obj) luces + GL_COLOR_MATERIAL + GL_SMOOTH
+    aplicar_camara()
 
 
 def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    Axis()
-    # Se dibuja el plano gris
-    glColor3f(0.3, 0.3, 0.3)
-    glBegin(GL_QUADS)
-    glVertex3d(-DimBoard, 0, -DimBoard)
-    glVertex3d(-DimBoard, 0, DimBoard)
-    glVertex3d(DimBoard, 0, DimBoard)
-    glVertex3d(DimBoard, 0, -DimBoard)
-    glEnd()
-
-    '''
-    #Se dibuja cubos
-    for obj in cubos:
-        obj.draw()
-        obj.update()
-
-    displayobj()
-    '''
+    aplicar_camara()
+    if MOSTRAR_EJES:
+        Axis()
+    dibujar_suelo()
+    dibujar_calles()
+    # (después) edificios, árboles, semáforos
 
 
-done = False
+pygame.init()
 Init()
+done = False
 while not done:
-    keys = pygame.key.get_pressed()
-    # avanzar observador
-    if keys[pygame.K_RIGHT]:
-        if theta > 359.0:
-            theta = 0
-        else:
-            theta += 1.0
-        lookat()
-    if keys[pygame.K_LEFT]:
-        if theta < 1.0:
-            theta = 360.0
-        else:
-            theta += -1.0
-        lookat()
-
     for event in pygame.event.get():
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
+        if event.type == pygame.QUIT:
+            done = True
+        elif event.type == pygame.KEYDOWN:
+            if not tecla_evento(event.key):
                 done = True
+
+    teclas_continuas(pygame.key.get_pressed())
 
     display()
 

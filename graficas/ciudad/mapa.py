@@ -1,6 +1,6 @@
 from collections import deque
 
-CELL = 2.0                       # metros por celda
+CELL = 2.0 # metros por celda
 
 EDIFICIO, ARBOL = '#', '*'
 CRUCE, GIRO_DER, GIRO_IZQ = '+', 'R', 'L'
@@ -117,17 +117,32 @@ def calcular_ruta(f, c, d, destino=None):
     # TODO: guardar padre de cada estado para reconstruir el camino
     # TODO: termina al encontrar una salida (o el 'destino' si se pide)
     # TODO: regresar lista de celdas [(f, c), ...] o None si no hay ruta
-
-def validar_mapa():
+'''
+def validar_mapa(f,c):
+    for semaforo in SEMAFOROS:
+        assert MAPA[f][c] in '#*'
+# TODO: para cada semáforo, assert MAPA[f][c] in '#*'   (con f, c = s['poste'])
     # TODO: 20 filas, todas de 25, solo caracteres de la leyenda
     # TODO: cada entrada tiene ruta a alguna salida
     # TODO: toda celda de calle aparece en al menos una ruta posible
     #       (BFS desde todas las entradas a la vez y comparar contra las celdas de calle)
     # TODO: regresar lista de errores (vacía = todo bien)
-'''
-INTERSECCIONES = []
-SEMAFOROS = [{1,13},{2,13},{4,20},{8,8},{8,22},{12,5},{12,11},{11,13},{12,21}]
 
+INTERSECCIONES = []
+SEMAFOROS = [
+    {'id': 1,  'cruce': 1, 'poste': (4, 14)},
+    {'id': 2,  'cruce': 1, 'poste': (4, 9)},
+    {'id': 3,  'cruce': 2, 'poste': (4, 20)},
+    {'id': 4,  'cruce': 2, 'poste': (4, 23)},
+    {'id': 5,  'cruce': 3, 'poste': (7, 7)},
+    {'id': 6,  'cruce': 3, 'poste': (12, 4)},
+    {'id': 7,  'cruce': 4, 'poste': (12, 9)},
+    {'id': 8,  'cruce': 4, 'poste': (12, 14)},
+    {'id': 9,  'cruce': 5, 'poste': (7, 23)},
+    {'id': 10, 'cruce': 5, 'poste': (12, 20)},
+    {'id': 11, 'cruce': 6, 'poste': (15, 9)},
+    {'id': 12, 'cruce': 6, 'poste': (17, 14)},
+]
 if __name__ == "__main__":
     print(FILAS, COLS)
     print(BORDE['izq'], BORDE['der'])
