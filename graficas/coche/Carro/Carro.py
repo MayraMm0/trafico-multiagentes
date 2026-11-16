@@ -69,6 +69,8 @@ class Carro:
         self.LlantaT_dist = np.array([-2.3,-0.5,0.0]) # eje trasero
         self.LlantaT_pos = np.copy(self.LlantaT_dist)
         self.M_Llantas_traseras[0:3, 3] = self.LlantaT_pos # la posición del eje en el coche nunca cambia, así que se fija una vez
+        
+        self.altura = (-self.LlantaT_pos[1] + self.Llanta_radio_base) * self.Scale
         # Para que las llantas tengan el efecto de girar hacia adelante
         # se debe calcular el angulo de rotacion de las mismas a partir de la formula
         # theta = (360 * d) / (2*pi*r), donde d es la distancia a recorrer y r el 
@@ -137,7 +139,7 @@ class Carro:
             self.P_trasero += self.Direction * self.vel # direction unitario, recorre vel por frame
             self.LlantaT_angZ += self.LlantaT_angZ_delta
         self.Position = self.P_trasero + self.Direction * self.d_eje
-        
+        self.Position[1] = self.altura
         # 4. consumir peticiones para que se verifique cada frame
         self.Avanza = False    
         self.Rota = False
@@ -209,5 +211,16 @@ class Carro:
         self.llantaFrontal(self.LlantaFR_pos, 2)
 
         glPopMatrix() # e0 -> volvemos a estado de mundo
-        
-        
+    
+    # método para ubicar coche en mapa
+    # ajusta ángulo, dirección y eje trasero a la vez
+    def set_pose(self, x, z, ang):
+        self.Body_Ry = ang % 360.0
+        rad = math.radians(self.Body_Ry)
+        self.Direction[0] = math.cos(rad)
+        self.Direction[2] = -math.sin(rad)
+        self.Position[0] = x
+        self.Position[2] = z
+        self.P_trasero = self.Position - self.Direction * self.d_eje
+        self.Position[1] = self.altura
+    

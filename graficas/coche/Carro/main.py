@@ -24,9 +24,9 @@ ZNEAR=1.0
 ZFAR=900.0
 #Variables para definir la posicion del observador
 #gluLookAt(EYE_X,EYE_Y,EYE_Z,CENTER_X,CENTER_Y,CENTER_Z,UP_X,UP_Y,UP_Z)
-EYE_X = 250.0
-EYE_Y = 150.0
-EYE_Z = 250.0
+EYE_X = 18.0
+EYE_Y = 12.0
+EYE_Z = 18.0
 CENTER_X = 0
 CENTER_Y = 0
 CENTER_Z = 0
@@ -41,7 +41,7 @@ Y_MAX=500
 Z_MIN=-500
 Z_MAX=500
 #Dimension del plano
-DimBoard = 200
+DimBoard = 30
 
 # Array para los objetos tipo carro
 objetos = []
@@ -50,7 +50,7 @@ ncarros = 1
 
 #Variables para el control del observador
 theta = 0.0
-radius = 250
+radius = 18
 
 pygame.init()
 
@@ -119,8 +119,9 @@ def Init():
     
     # se genera un carro
     for i in range(ncarros):
-        carros.append(Carro(DimBoard, 1.0, 10.0))
+        carros.append(Carro(DimBoard, 0.1, 0.46))
         carros[-1].getComponents(objetos)
+        carros[-1].set_pose(10.0, 5.0, 90.0)
         
 
 #Se mueve al observador circularmente al rededor del plano XZ a una altura fija (EYE_Y)
@@ -139,10 +140,11 @@ def display():
     #Se dibuja el plano gris
     glColor3f(0.3, 0.3, 0.3)
     glBegin(GL_QUADS)
-    glVertex3d(-DimBoard, -20, -DimBoard)
-    glVertex3d(-DimBoard, -20, DimBoard)
-    glVertex3d(DimBoard, -20, DimBoard)
-    glVertex3d(DimBoard, -20, -DimBoard)
+    glNormal3f(0, 1, 0)
+    glVertex3d(-DimBoard, 0, -DimBoard)
+    glVertex3d(-DimBoard, 0, DimBoard)
+    glVertex3d(DimBoard, 0, DimBoard)
+    glVertex3d(DimBoard, 0, -DimBoard)
     glEnd()
         
     #Se dibuja el carro
