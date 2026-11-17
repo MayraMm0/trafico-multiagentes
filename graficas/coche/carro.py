@@ -1,19 +1,18 @@
-#Autor: Ivan Olmos Pineda
-
-import pygame
-from pygame.locals import *
-
-# Cargamos las bibliotecas de OpenGL
-from OpenGL.GL import *
-from OpenGL.GLU import *
-from OpenGL.GLUT import *
-
-# Import obj loader
-from objloader import *
-
-import numpy as np
-import random
+import os
 import math
+import numpy as np
+from OpenGL.GL import *
+
+from graficas.objloader import OBJ
+
+DIR_MODELOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modelos')
+# draw() usa component[0]=carroceria, [1]=FL, [2]=FR, [3]=traseras
+PIEZAS = ['carroceria.obj', 'llanta_FL.obj', 'llanta_FR.obj', 'llantas_traseras.obj']
+
+# Carga las 4 piezas UNA vez (requiere ventana OpenGL creada).
+# Todos los coches comparten esta misma lista.
+def cargar_piezas():
+    return [OBJ(os.path.join(DIR_MODELOS, nombre), swapyz=True) for nombre in PIEZAS]
 
 class Carro:
     

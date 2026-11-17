@@ -8,13 +8,7 @@ from OpenGL.GLUT import *
 
 import math
 
-# Se carga el archivo de la clase Cubo
-import sys
-sys.path.append('..')
-from Carro import Carro
-
-# Import obj loader
-from objloader import *
+from graficas.coche.carro import Carro, cargar_piezas
 
 screen_width = 1400
 screen_height = 800
@@ -105,17 +99,8 @@ def Init():
     glEnable(GL_COLOR_MATERIAL)
     glEnable(GL_NORMALIZE)
     
-    # Se generan los componentes graficos del carro y se gregan
-    # al array objetos
-    objetos.append(OBJ("carroceria.obj", swapyz=True))
-    objetos[0].generate()
-    objetos.append(OBJ("llanta_FL.obj", swapyz=True))
-    objetos[1].generate()
-    objetos.append(OBJ("llanta_FR.obj", swapyz=True))
-    objetos[2].generate()
-    objetos.append(OBJ("llantas_traseras.obj", swapyz=True))
-    objetos[3].generate()
     # las piezas se cargan una sola vez y los n coches comparten
+    objetos.extend(cargar_piezas())
     
     # se genera un carro
     for i in range(ncarros):

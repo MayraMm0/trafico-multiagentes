@@ -1,4 +1,4 @@
-from collections import deque
+# correr con python -m graficas.ciudad.mapa    
 
 CELL = 2.0 # metros por celda
 
@@ -39,11 +39,11 @@ def cargar_mapa(txt):
     for line in lines[1:-1]:
         izq = izq + line[0]
         der = der + line[-1]
-        mapa.append(line.strip("01"))
+        mapa.append(line[1:-1])
 
     borde = {
         'arriba': lines[0][1:-1],
-        'abajo': lines[1][1:-1],
+        'abajo': lines[-1][1:-1],
         'izq': izq,
         'der': der,
     }
@@ -59,7 +59,7 @@ def en_mapa(f, c):
     if 0 <= f < FILAS:
         if 0 <= c < COLS:
             return True
-    return None
+    return False
 
 
 def es_calle(f, c):
@@ -118,15 +118,24 @@ def calcular_ruta(f, c, d, destino=None):
     # TODO: termina al encontrar una salida (o el 'destino' si se pide)
     # TODO: regresar lista de celdas [(f, c), ...] o None si no hay ruta
 '''
-def validar_mapa(f,c):
-    for semaforo in SEMAFOROS:
-        assert MAPA[f][c] in '#*'
-# TODO: para cada semáforo, assert MAPA[f][c] in '#*'   (con f, c = s['poste'])
-    # TODO: 20 filas, todas de 25, solo caracteres de la leyenda
+def validar_mapa():
+    errores = []
+    leyenda = set(FLECHAS) | {EDIFICIO, ARBOL, CRUCE, GIRO_DER, GIRO_IZQ}
+    for f, fila in enumerate(MAPA):
+        if len(fila) != COLS:
+            errores.append(f"fila {f}: mide {len(fila)}, se esperaban {COLS}")
+        for c, ch in enumerate(fila):
+            if ch not in leyenda:
+                errores.append(f"celda ({f},{c}): caracter desconocido {ch!r}")
+    for s in SEMAFOROS:
+        f, c = s['poste']
+        if not en_mapa(f, c) or MAPA[f][c] not in (EDIFICIO, ARBOL):
+            errores.append(f"semaforo {s['id']}: el poste {s['poste']} no está en banqueta")
+    
+    return errores
     # TODO: cada entrada tiene ruta a alguna salida
     # TODO: toda celda de calle aparece en al menos una ruta posible
     #       (BFS desde todas las entradas a la vez y comparar contra las celdas de calle)
-    # TODO: regresar lista de errores (vacía = todo bien)
 
 INTERSECCIONES = []
 SEMAFOROS = [
@@ -148,5 +157,6 @@ if __name__ == "__main__":
     print(BORDE['izq'], BORDE['der'])
     print(es_calle(0,0), es_calle(4,0), es_calle(19,24))
     print(celda_a_mundo(0,0), celda_a_mundo(19,24))
+    print('errores:', validar_mapa())
 
     # TODO: imprimir una ruta de ejemplo desde la primera entrada

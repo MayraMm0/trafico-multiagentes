@@ -2,7 +2,7 @@ import os
 import pygame
 from OpenGL.GL import *
 
-# cada pieza es un ONJ separado
+# cada pieza es un OBJ separado
 class OBJ:
     generate_on_init = True
     @classmethod
@@ -90,30 +90,25 @@ class OBJ:
             self.generate()
 
     def generate(self):
-        self.gl_list = glGenLists(1) # crea display list
+        """Compila la pieza en una display list agrupando caras por material:
+        un glColor y un solo glBegin(GL_TRIANGLES) por material."""
+        por_material = {}
+        for vertices, normals, texture_coords, material in self.faces:
+            por_material.setdefault(material, []).append((vertices, normals))
+
+        self.gl_list = glGenLists(1)
         glNewList(self.gl_list, GL_COMPILE)
-        glEnable(GL_TEXTURE_2D)
-        glFrontFace(GL_CCW)
-        for face in self.faces:
-            vertices, normals, texture_coords, material = face
-
-            mtl = self.mtl[material]
-            if 'texture_Kd' in mtl:
-                # use diffuse texmap
-                glBindTexture(GL_TEXTURE_2D, mtl['texture_Kd'])
-            else:
-                # just use diffuse colour
-                glColor(*mtl['Kd'])
-
-            glBegin(GL_POLYGON)
-            for i in range(len(vertices)):
-                if normals[i] > 0:
-                    glNormal3fv(self.normals[normals[i] - 1])
-                if texture_coords[i] > 0:
-                    glTexCoord2fv(self.texcoords[texture_coords[i] - 1])
-                glVertex3fv(self.vertices[vertices[i] - 1])
+        for material, caras in por_material.items():
+            glColor(*self.mtl[material]['Kd'])
+            glBegin(GL_TRIANGLES)
+            for vertices, normals in caras:
+                # abanico: el polígono (0,1,2,3,...) se parte en (0,1,2), (0,2,3), ...
+                for i in range(1, len(vertices) - 1):
+                    for k in (0, i, i + 1):
+                        if normals[k] > 0:
+                            glNormal3fv(self.normals[normals[k] - 1])
+                        glVertex3fv(self.vertices[vertices[k] - 1])
             glEnd()
-        glDisable(GL_TEXTURE_2D)
         glEndList()
 
     # la lista es geometría fija, moverla se hace antes (con matrices) antes de llamar a render
