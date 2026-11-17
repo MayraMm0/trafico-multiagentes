@@ -4,7 +4,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 
 from mapa import MAPA, FILAS, COLS, CELL, es_calle, celda_a_mundo, SEMAFOROS
-# (después) from decoracion import construir_ciudad, dibujar_ciudad
+from decoracion import generar_edificios, dibujar_banquetas, dibujar_edificios
 from objloader import *
 
 SCREEN_W, SCREEN_H = 1400, 800
@@ -12,17 +12,17 @@ FOVY, ZNEAR, ZFAR = 60.0, 1.0, 300.0
 DIM_X = COLS * CELL / 2          # 25
 DIM_Z = FILAS * CELL / 2         # 20
 
-Y_SUELO, Y_CALLE, Y_LINEA = 0.0, 0.05, 0.1
+Y_SUELO, Y_CALLE, Y_LINEA = 0.0, 0.05, 0.1     # capas para evitar parpadeo
 
 pasto = (149, 249, 39)
 asfalto = (89, 89, 89)
 cielo = (103, 166, 224)
 
+# Ejes
 X_MIN, X_MAX = -30, 30
 Y_MIN, Y_MAX = -30, 30
 Z_MIN, Z_MAX = -30, 30
 MOSTRAR_EJES = True
-
 
 theta   = 45.0      # ángulo de la órbita
 radius  = 40.0      # distancia al centro
@@ -58,6 +58,7 @@ def aplicar_camara():
 
 
 def teclas_continuas(keys):
+    """Teclas que se mantienen presionadas."""
     global theta, EYE_Y, radius
     # Girar alrededor de la ciudad
     if keys[pygame.K_RIGHT]:
@@ -77,6 +78,7 @@ def teclas_continuas(keys):
 
 
 def tecla_evento(key):
+    """Teclas de una sola pulsación. Regresa False si hay que salir."""
     global cenital, MOSTRAR_EJES
     if key == pygame.K_c:
         cenital = not cenital
@@ -151,6 +153,7 @@ def Init():
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     glShadeModel(GL_FLAT)
     # (después, al cargar .obj) luces + GL_COLOR_MATERIAL + GL_SMOOTH
+    generar_edificios()          # UNA sola vez (usa random con semilla fija)
     aplicar_camara()
 
 
@@ -161,7 +164,9 @@ def display():
         Axis()
     dibujar_suelo()
     dibujar_calles()
-    # (después) edificios, árboles, semáforos
+    dibujar_banquetas()
+    dibujar_edificios()
+    # (después) árboles, semáforos
 
 
 pygame.init()
