@@ -1,8 +1,11 @@
+# ===================== decoracion.py =====================
 # Ciudad estática: banquetas y edificios (después: árboles, farolas, display list)
 import random
 from OpenGL.GL import *
-from graficas.ciudad.mapa import MAPA, FILAS, COLS, CELL, en_mapa, celda_a_mundo
+from mapa import MAPA, FILAS, COLS, CELL, en_mapa, celda_a_mundo
+import modelosCiudad as modelos
 
+# ---------- CONFIG EDIFICIOS ----------
 SEMILLA = 42                     # misma semilla -> misma ciudad cada vez
 Y_BANQUETA = 0.15                # más alta que la calle (0.05)
 COLOR_BANQUETA = (190, 190, 185)
@@ -18,10 +21,30 @@ PALETA = [
     (205, 160, 120),   # terracota claro
 ]
 
+# ---------- MODELOS .OBJ ----------
+# nombre -> archivo dentro de graficas/assets/ciudad/
+MODELOS = {
+    'oxxo': 'oxxo/oxxo_listo.obj',
+    'farmacia': 'farmacia/FarmaciaG_lista.obj',
+    'vips': 'vips/vips_listo.obj',
+}
+
+# Manzanas que usan un modelo en vez de cubos.
+# El número es el índice de la manzana (ver tabla en el chat / print al iniciar):
+#   0:(4-7,0-4)  1:(4-7,7-9)  2:(4-7,14-20)  3:(12-15,2-4)  4:(12-15,7-9)  5:(12-17,14-20)
+# rot = hacia dónde se gira el modelo (0, 90, 180, 270) para que el frente mire a la calle
+MANZANAS_ESPECIALES = {
+    0: {'modelo': 'farmacia', 'rot': 270},   # letreros hacia la avenida superior y la calle de cols 5-6
+    2: {'modelo': 'oxxo', 'rot': 0},         # entrada hacia la avenida superior
+    5: {'modelo': 'vips', 'rot': 0},         # entrada hacia la avenida media
+}
+
 edificios = []                   # se llena UNA vez en generar_edificios()
+especiales = []                  # modelos colocados en manzanas
 manzanas = []
 
 
+# ---------- MANZANAS ----------
 def encontrar_manzanas():
     """Agrupa las celdas '#' conectadas y regresa sus rectángulos (f0, f1, c0, c1)."""
     visitado = set()
@@ -48,6 +71,7 @@ def encontrar_manzanas():
 
 
 def partir(n):
+    """Divide n celdas en pedazos de 2 o 3.  5 -> [2, 3], 7 -> [2, 2, 3]."""
     pedazos = []
     while n > 3:
         pedazos.append(2)
@@ -57,10 +81,21 @@ def partir(n):
 
 
 def rect_a_mundo(f0, f1, c0, c1):
+    """Esquinas en metros de un rectángulo de celdas (incluye las celdas f1 y c1)."""
     m = CELL / 2
     x0, z0 = celda_a_mundo(f0, c0)
     x1, z1 = celda_a_mundo(f1, c1)
     return x0 - m, x1 + m, z0 - m, z1 + m
+
+
+# ---------- GENERACIÓN (una sola vez) ----------
+def cargar_modelos():
+    """Carga los .obj (necesita la ventana OpenGL ya creada)."""
+    for nombre, ruta in MODELOS.items():
+        try:
+            modelos.cargar(nombre, ruta, swapyz=True)
+        except Exception as e:
+            print(f"[decoracion] no se pudo cargar {nombre} ({ruta}): {e}")
 
 
 def generar_edificios():
@@ -68,7 +103,15 @@ def generar_edificios():
     random.seed(SEMILLA)
     manzanas = encontrar_manzanas()
     edificios.clear()
-    for (f0, f1, c0, c1) in manzanas:
+    especiales.clear()
+    for i, (f0, f1, c0, c1) in enumerate(manzanas):
+        esp = MANZANAS_ESPECIALES.get(i)
+        if esp and modelos.existe(esp['modelo']):
+            x0, x1, z0, z1 = rect_a_mundo(f0, f1, c0, c1)
+            especiales.append({'modelo': esp['modelo'], 'rot': esp.get('rot', 0),
+                               'x0': x0 + MARGEN_LOTE, 'x1': x1 - MARGEN_LOTE,
+                               'z0': z0 + MARGEN_LOTE, 'z1': z1 - MARGEN_LOTE})
+            continue                    # esta manzana no lleva cubos
         f = f0
         for alto in partir(f1 - f0 + 1):
             c = c0
@@ -84,11 +127,13 @@ def generar_edificios():
             f += alto
 
 
+# ---------- DIBUJO ----------
 def _tono(color, factor):
     return tuple(int(v * factor) for v in color)
 
 
 def caja(x0, x1, y0, y1, z0, z1, color):
+    """Prisma: 4 lados + techo, con sombreado falso (no necesita luces)."""
     glBegin(GL_QUADS)
     # Techo
     glColor3ub(*color)
@@ -119,3 +164,6 @@ def dibujar_edificios():
     for e in edificios:
         caja(e['x0'], e['x1'], Y_BANQUETA, Y_BANQUETA + e['altura'],
              e['z0'], e['z1'], e['color'])
+    for e in especiales:
+        modelos.dibujar_ajustado(e['modelo'], e['x0'], e['x1'], e['z0'], e['z1'],
+                                 Y_BANQUETA, e['rot'])

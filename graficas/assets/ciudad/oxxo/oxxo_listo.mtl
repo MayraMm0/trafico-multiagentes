@@ -1,0 +1,132 @@
+# Blender 5.3.0 MTL File: 'None'
+# www.blender.org
+
+newmtl Default_Material
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl MAT_Refri
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.85 0.88 0.90
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Oxxo_Exterior_MAT_Refri_AlbedoTransparency.png
+
+newmtl MAT_Superior
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.80 0.12 0.15
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Oxxo_Exterior_MAT_Superior_AlbedoTransparency.png
+
+newmtl Mat_Accesorios
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.55 0.55 0.58
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Accesorios_Mat_Accesorios_AlbedoTransparency.png
+
+newmtl Mat_Piso
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.70 0.70 0.68
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Oxxo_Exterior_Mat_Piso_AlbedoTransparency.png
+
+newmtl Transparency
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.70 0.85 0.95
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl _448128
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.95 0.75 0.10
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd 448128.jpg
+
+newmtl oxxo_folleto_abril_mayo
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.95 0.85 0.30
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd oxxo-folleto-abril-mayo.jpg
+
+newmtl oxxo_folleto_abril_mayo_1
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.95 0.85 0.30
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd oxxo-folleto-abril-mayo.jpg
+
+newmtl oxxo_ofertas_marzo_2020
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.95 0.85 0.30
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd oxxo-ofertas-marzo-2020.jpg
+
+newmtl oxxo_ofertas_marzo_2020_1
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.95 0.85 0.30
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd oxxo-ofertas-marzo-2020.jpg
+
+newmtl signs_varios
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.95 0.75 0.10
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd signs-varios.jpg
