@@ -6,7 +6,7 @@ from OpenGL.GLU import *
 
 from graficas import camara
 from graficas.ciudad.mapa import MAPA, FILAS, COLS, CELL, es_calle, celda_a_mundo, SEMAFOROS
-from graficas.ciudad.decoracion import cargar_modelos, generar_edificios, dibujar_banquetas, dibujar_edificios
+from graficas.ciudad.decoracion import cargar_modelos, generar_edificios, dibujar_banquetas, dibujar_edificios, dibujar_lineas
 from graficas.ciudad.modelosCiudad import configurar_luz, posicionar_luz
 
 # ---------- CONFIG ----------
@@ -76,6 +76,8 @@ def preparar_ciudad():
 def dibujar_ciudad():
     dibujar_suelo()
     dibujar_calles()
+    dibujar_lineas()
+
     dibujar_banquetas()
     dibujar_edificios()
     # (después) árboles, semáforos, farolas

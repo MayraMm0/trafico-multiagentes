@@ -4,6 +4,8 @@ import random
 from OpenGL.GL import *
 from graficas.ciudad.mapa import MAPA, FILAS, COLS, CELL, en_mapa, celda_a_mundo
 from graficas.ciudad import modelosCiudad as modelos
+from mapa import FLECHAS, es_calle
+import numpy as np
 
 # ---------- CONFIG EDIFICIOS ----------
 SEMILLA = 42                     # misma semilla -> misma ciudad cada vez
@@ -20,6 +22,14 @@ PALETA = [
     (120, 130, 140),   # gris oscuro
     (205, 160, 120),   # terracota claro
 ]
+
+Y_LINEA = 0.10                                # entre calle (0.05) y banqueta (0.15)
+COLOR_AMARILLO = (240, 200, 40)
+COLOR_BLANCO = (240, 240, 240)
+ANCHO_LINEA = 0.12                            # cada línea de la doble amarilla
+SEPARACION_DOBLE = 0.15                       # hueco entre las dos amarillas
+FRANJA_ANCHO, FRANJA_HUECO, FRANJA_LARGO = 0.30, 0.30, 1.4   # cebra
+N_FRANJAS = 3                                 # por celda (6 por carril de 2 celdas)
 
 # ---------- MODELOS .OBJ ----------
 # nombre -> archivo dentro de graficas/assets/ciudad/
@@ -167,3 +177,77 @@ def dibujar_edificios():
     for e in especiales:
         modelos.dibujar_ajustado(e['modelo'], e['x0'], e['x1'], e['z0'], e['z1'],
                                  Y_BANQUETA, e['rot'])
+
+def quad_plano(x0, x1, z0, z1, color):
+    """Un rectángulo plano en y = Y_LINEA.
+    Va DENTRO de un glBegin(GL_QUADS) que abre quien llama (más rápido)."""
+    glColor3ub(*color)
+    glVertex3f(x0, Y_LINEA, z0)
+    glVertex3f(x0, Y_LINEA, z1)
+    glVertex3f(x1, Y_LINEA, z1)
+    glVertex3f(x1, Y_LINEA, z0)
+
+
+def opuestas(a, b):
+    """True si a y b son flechas que apuntan en sentidos contrarios ('>' y '<', '^' y 'v')."""
+    if a not in FLECHAS or b not in FLECHAS:
+        return False
+    da, db = FLECHAS[a], FLECHAS[b]
+    return da == (-db[0], -db[1])
+
+
+def dibujar_lineas_centrales():
+    m = CELL / 2
+    s = SEPARACION_DOBLE / 2
+    glNormal3f(0, 1, 0)
+    glBegin(GL_QUADS)
+    # Horizontales: frontera entre la fila f y la f+1
+    for f in range(FILAS - 1):
+        for c in range(COLS):
+            a, b = MAPA[f][c], MAPA[f + 1][c]
+            if opuestas(a, b) and FLECHAS[a][0] == 0:
+                x, z = celda_a_mundo(f, c)
+                z_borde = z + m
+                quad_plano(x - m, x + m, z_borde - s - ANCHO_LINEA, z_borde - s, COLOR_AMARILLO)
+                quad_plano(x - m, x + m, z_borde + s, z_borde + s + ANCHO_LINEA, COLOR_AMARILLO)
+    # Verticales: frontera entre la columna c y la c+1
+    for f in range(FILAS):
+        for c in range(COLS - 1):
+            a, b = MAPA[f][c], MAPA[f][c + 1]
+            if opuestas(a, b) and FLECHAS[a][1] == 0:
+                x, z = celda_a_mundo(f, c)
+                x_borde = x + m
+                quad_plano(x_borde - s - ANCHO_LINEA, x_borde - s, z - m, z + m, COLOR_AMARILLO)
+                quad_plano(x_borde + s, x_borde + s + ANCHO_LINEA, z - m, z + m, COLOR_AMARILLO)
+    glEnd()
+
+
+def dibujar_pasos_peatonales():
+    m = CELL / 2
+    total = N_FRANJAS * FRANJA_ANCHO + (N_FRANJAS - 1) * FRANJA_HUECO
+    inicio = -total / 2                       # grupo de franjas centrado en la celda
+    glNormal3f(0, 1, 0)
+    glBegin(GL_QUADS)
+    for f in range(FILAS):
+        for c in range(COLS):
+            ch = MAPA[f][c]
+            if ch not in FLECHAS:
+                continue
+            d = FLECHAS[ch]
+            n = (f + d[0], c + d[1])
+            if not es_calle(*n) or MAPA[n[0]][n[1]] == ch:
+                continue                      # la siguiente es igual: no llega a un cruce
+            x, z = celda_a_mundo(f, c)
+            for i in range(N_FRANJAS):
+                a0 = inicio + i * (FRANJA_ANCHO + FRANJA_HUECO)
+                a1 = a0 + FRANJA_ANCHO
+                if d[0] == 0:   # tráfico horizontal: franjas largas en X, repartidas en Z
+                    quad_plano(x - FRANJA_LARGO / 2, x + FRANJA_LARGO / 2, z + a0, z + a1, COLOR_BLANCO)
+                else:           # tráfico vertical: franjas largas en Z, repartidas en X
+                    quad_plano(x + a0, x + a1, z - FRANJA_LARGO / 2, z + FRANJA_LARGO / 2, COLOR_BLANCO)
+    glEnd()
+
+
+def dibujar_lineas():
+    dibujar_lineas_centrales()
+    dibujar_pasos_peatonales()
