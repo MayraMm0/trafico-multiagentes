@@ -8,6 +8,7 @@ from OpenGL.GLU import *
 
 from graficas import camara
 from graficas.ciudad.mainCiudad import preparar_ciudad, dibujar_ciudad, Y_CALLE
+from graficas.ciudad.modelosCiudad import configurar_luz, posicionar_luz
 from graficas.coche.carro import cargar_piezas
 from graficas.coche.flota import posiciones_de_prueba, crear_flota, dibujar_flota
 
@@ -15,7 +16,6 @@ SCREEN_W, SCREEN_H = 1400, 800
 FOVY, ZNEAR, ZFAR = 60.0, 1.0, 300.0
 CIELO = (103 / 255, 166 / 255, 224 / 255)
 N_COCHES = 15
-LUZ_DIR = (0.3, 1.0, 0.5, 0.0)   # w = 0 -> luz direccional (como el sol)
 FPS_OBJETIVO = 0     # 0 = sin límite (para medir). Ya optimizado: 60
 
 carros = []
@@ -32,9 +32,8 @@ def init():
     glClearColor(*CIELO, 1.0)
     glEnable(GL_DEPTH_TEST)
     
-    # Luz: se configura UNA vez; se prende solo al dibujar coches
-    glLightfv(GL_LIGHT0, GL_AMBIENT, (0.5, 0.5, 0.5, 1.0))
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, (0.5, 0.5, 0.5, 1.0))
+    # Luz
+    configurar_luz()
     glEnable(GL_LIGHT0)
     glEnable(GL_COLOR_MATERIAL)   # el color de cada material del .obj alimenta la luz
     glEnable(GL_NORMALIZE)        # la escala 0.46 encoge las normales; esto las corrige
@@ -47,7 +46,7 @@ def init():
 def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     camara.aplicar_camara()
-    glLightfv(GL_LIGHT0, GL_POSITION, LUZ_DIR)   # DESPUÉS de la cámara: luz fija al mundo
+    posicionar_luz()   # DESPUÉS de la cámara: luz fija al mundo
     camara.dibujar_ejes()
 
     # Ciudad: sin luz, colores planos (como la diseñó Majo)

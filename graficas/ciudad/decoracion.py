@@ -2,8 +2,8 @@
 # Ciudad estática: banquetas y edificios (después: árboles, farolas, display list)
 import random
 from OpenGL.GL import *
-from mapa import MAPA, FILAS, COLS, CELL, en_mapa, celda_a_mundo
-import modelosCiudad as modelos
+from graficas.ciudad.mapa import MAPA, FILAS, COLS, CELL, en_mapa, celda_a_mundo
+from graficas.ciudad import modelosCiudad as modelos
 
 # ---------- CONFIG EDIFICIOS ----------
 SEMILLA = 42                     # misma semilla -> misma ciudad cada vez
