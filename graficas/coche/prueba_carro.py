@@ -1,3 +1,4 @@
+# Correrlo con python -m graficas.coche.prueba_carro
 import pygame
 from pygame.locals import *
 
