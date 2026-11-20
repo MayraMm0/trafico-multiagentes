@@ -137,7 +137,23 @@ def validar_mapa():
     # TODO: toda celda de calle aparece en al menos una ruta posible
     #       (BFS desde todas las entradas a la vez y comparar contra las celdas de calle)
 
-INTERSECCIONES = []
+# (fila_ini, fila_fin, col_ini, col_fin)
+INTERSECCIONES = [
+    {'id': 1, 'celdas': (0, 3, 10, 13)},
+    {'id': 2, 'celdas': (0, 3, 21, 22)},
+    {'id': 3, 'celdas': (8, 11, 5, 6)},
+    {'id': 4, 'celdas': (8, 11, 10, 13)},
+    {'id': 5, 'celdas': (8, 11, 21, 22)},
+    {'id': 6, 'celdas': (16, 19, 10, 13)}
+]
+
+def centro_interseccion(id_cruce):
+    for cruce in INTERSECCIONES:
+        if cruce['id'] == id_cruce:
+            f0, f1, c0, c1 = cruce['celdas']
+            return celda_a_mundo((f0 + f1) / 2, (c0 + c1) / 2)
+    raise ValueError(f"no existe el cruce {id_cruce}")
+
 SEMAFOROS = [
     {'id': 1,  'cruce': 1, 'poste': (4, 14)},
     {'id': 2,  'cruce': 1, 'poste': (4, 9)},
