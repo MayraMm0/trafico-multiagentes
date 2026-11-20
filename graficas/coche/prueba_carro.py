@@ -105,7 +105,7 @@ def Init():
     
     # se genera un carro
     for i in range(ncarros):
-        carros.append(Carro(DimBoard, 0.1, 0.46))
+        carros.append(Carro(DimBoard, 6.0, 0.46))
         carros[-1].getComponents(objetos)
         carros[-1].set_pose(10.0, 5.0, 90.0)
         
@@ -120,7 +120,7 @@ def lookat():
     glLoadIdentity()
     gluLookAt(EYE_X,EYE_Y,EYE_Z,CENTER_X,CENTER_Y,CENTER_Z,UP_X,UP_Y,UP_Z)
 
-def display():
+def display(dt):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     Axis()
     #Se dibuja el plano gris
@@ -135,11 +135,13 @@ def display():
         
     #Se dibuja el carro
     for car in carros:
-        car.update() # lógica: nueva posición y ángulos
+        car.update(dt) # lógica: nueva posición y ángulos
         car.draw()   # se pinta con esos valores
     
 done = False
 Init()
+reloj = pygame.time.Clock()
+dt = 0.0
 while not done:
     keys = pygame.key.get_pressed()
     #avanzar observador
@@ -169,9 +171,9 @@ while not done:
             if event.key == pygame.K_ESCAPE:
                 done = True
 
-    display()
+    display(dt)
 
     pygame.display.flip() # intercambia el buffer donde se dibujó con el que se muestra (doble buffer) 
-    pygame.time.wait(10)
+    dt = reloj.tick(60) / 1000.0 # limita a 60 fps y devuelve el tiempo en ms que tardó el frame
 
 pygame.quit()

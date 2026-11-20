@@ -38,7 +38,7 @@ class Carro:
         #rotacion de llantas frontales
         self.Ll_F_Ry = 0.0
         self.Ll_F_max = 35.0 #giro max en grados
-        self.Ll_F_paso = 2.0 # cuánto cambia ang de dirección por frame
+        self.Ll_F_vel = 120.0 # grados por segundo del volante
         
         self.cos_ang = 0.0
         self.sin_ang = 0.0
@@ -77,7 +77,7 @@ class Carro:
         # La distancia a recorrer depende de la velocidad (el vector de direccion es unitario)
         # como se desea que el carrito avance, la rotación es en contra de las manecillas del reloj
         # con respecto al eje Z, por lo tanto es una rotación negativa
-        self.LlantaT_angZ_delta = math.radians((-1.0 * 360.0 * self.vel) / (2.0 * np.pi * self.Llanta_radio))
+        
         # angulo de rotacion inicial para las llantas frontales y traseras
         self.LlantaT_angZ = 0.0
         # variables para llantas frontales
@@ -89,8 +89,6 @@ class Carro:
         self.d_eje = abs(self.LlantaT_pos[0]) * self.Scale
         #Estado real del modelo de bicicleta: posición del eje trasero
         self.P_trasero = self.Position - self.Direction * self.d_eje
-        # Intervalo de tiempo por frame
-        self.dt = 100
     
 
     def _mult(self, M):
@@ -108,23 +106,27 @@ class Carro:
         # solo guarda petición porque update ejecuta
 
     # Avanzar según dirección y vel, y que se consuma(condición de no avanzar)
-    def update(self):
-        # 0. Dir de las llantas F (volante)
+    def update(self, dt):
+        # 0. Dir de las llantas F (volante), gira Ll_F_vel grados por segundo
+        paso_volante = self.Ll_F_vel * dt
         if self.Rota == 'L':
-            self.Ll_F_Ry += self.Ll_F_paso # izq es -Z, pero ang positivo
+            self.Ll_F_Ry += paso_volante # izq es -Z, pero ang positivo
         elif self.Rota == 'R':
-            self.Ll_F_Ry -= self.Ll_F_paso
-        elif abs(self.Ll_F_Ry) <= self.Ll_F_paso:
+            self.Ll_F_Ry -= paso_volante
+        elif abs(self.Ll_F_Ry) <= paso_volante:  # si ya está casi en el centro, se pone en cero
             self.Ll_F_Ry = 0.0
         else:
-            self.Ll_F_Ry -= math.copysign(self.Ll_F_paso, self.Ll_F_Ry) # regresa al centro
+            self.Ll_F_Ry -= math.copysign(paso_volante, self.Ll_F_Ry) # regresa al centro
         
         # limites
         self.Ll_F_Ry = max(-self.Ll_F_max, min(self.Ll_F_max, self.Ll_F_Ry))
         
+        # distancia recorrida en este frame
+        d = self.vel * dt if self.Avanza else 0.0
+        
         # 1. Giro del cuerpo (solo si avanza) Δθ = (v/L)·tan(δ)
-        if self.Avanza:
-            dtheta = (self.vel / self.L) * math.tan(math.radians(self.Ll_F_Ry))
+        if d:
+            dtheta = (d / self.L) * math.tan(math.radians(self.Ll_F_Ry))
             self.Body_Ry = (self.Body_Ry + math.degrees(dtheta)) % 360.0
             
         # 2. Dirección sale del nuevo ángulo del cuerpo/carrocería
@@ -133,12 +135,13 @@ class Carro:
         self.Direction[2] = -math.sin(rad)
         
         # 3. Si hubo petición en frame:
-        # avance del eje trasero y position derivada
-        if self.Avanza:
-            self.P_trasero += self.Direction * self.vel # direction unitario, recorre vel por frame
-            self.LlantaT_angZ += self.LlantaT_angZ_delta
+        # avance del eje trasero y rodado de llantas (ángulo = distancia / radio)
+        if d:
+            self.P_trasero += self.Direction * d # direction unitario, recorre vel por frame
+            self.LlantaT_angZ -= d / self.Llanta_radio
         self.Position = self.P_trasero + self.Direction * self.d_eje
         self.Position[1] = self.altura
+        
         # 4. consumir peticiones para que se verifique cada frame
         self.Avanza = False    
         self.Rota = False
