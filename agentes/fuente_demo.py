@@ -37,12 +37,12 @@ class FuenteDemo:
                 coche['f'], coche['c'] = f2, c2
                 coche['estado'] = AVANZANDO
             else:
-                coche['esperando'] = DETENIDO
+                coche['estado'] = DETENIDO
         return [dict(x) for x in self.coches]
     
     # Libre si ningún otro coche está en el destino ni en las celdas que le siguen.
     def _libre(self, yo, f, c, d):
-        celdas = {(f + d[0] * k, c + d[1] * k) for k in range(DIST_SEG)}
+        celdas = {(f + d[0] * k, c + d[1] * k) for k in range(DIST_SEG + 1)}
         return all((o['f'], o['c']) not in celdas for o in self.coches if o is not yo)
 
 if __name__ == '__main__':

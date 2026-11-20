@@ -1,13 +1,9 @@
 #Agente coche decide sobre celdas, lo gráfico solo dibuja
 import agentpy as ap
 from graficas.ciudad.mapa import FLECHAS
+from agentes.contrato import (AVANZANDO, DETENIDO, ESPERANDO_PASO, CEDIENDO, EN_CRUCE,
+                              RECTO, IZQ, DER, T_PASO, DIST_SEG)
 
-# Estados lógicos del agente
-AVANZANDO, DETENIDO, ESPERANDO_PASO, CEDIENDO, EN_CRUCE = (
-    'AVANZANDO', 'DETENIDO', 'ESPERANDO_PASO', 'CEDIENDO', 'EN_CRUCE')
-
-RECTO, IZQ, DER = 'RECTO', 'IZQ', 'DER'  # dirección de giro
-DIST_SEG = 2 # celdas libres que necesita enfrente
 # para decidir giro según flecha de la celda
 DIR_A_FLECHA = {d: ch for ch, d in FLECHAS.items()}  # (dfila, dcol) -> '>' '<' '^' 'v' 
 

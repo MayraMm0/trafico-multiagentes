@@ -91,15 +91,17 @@ def main():
         dt = reloj.tick(FPS_OBJETIVO) / 1000  # segundos desde el frame anterior
         actualizar_ciudad(dt)  # semáforos (demo por tiempo)
         # Lógica: un paso cada T_PASO segundos (como máximo uno por frame)
-        acumulado += dt
-        if acumulado >= T_PASO:
-            for snap in fuente.paso():
+        acumulado += dt   # 1. suma lo que duró este frame
+        if acumulado >= T_PASO: # 2. ¿ya pasaron 0.5 s?
+            # 3. sí → un paso lógico
+            for snap in fuente.paso():  
                 coches[snap['id']].recibir(snap)
+            # 4. resta, no reinicia
             acumulado = min(acumulado - T_PASO, T_PASO)
 
         # Gráfico: cada coche avanza hacia su celda objetivo
         for coche in coches.values():
-            coche.actualizar(dt, T_PASO - acumulado)
+            coche.actualizar(dt, T_PASO - acumulado) # 5. cuánto falta
             
         display()
         pygame.display.flip()
