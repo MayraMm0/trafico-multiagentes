@@ -1,8 +1,7 @@
-# ===================== modelosCiudad.py =====================
 # Carga cada .obj UNA vez y lo dibuja ajustado a un rectángulo del mapa.
 import os
 from OpenGL.GL import *
-from graficas.objloader import OBJ
+from ..objloader import OBJ
 
 # graficas/ciudad/modelosCiudad.py  ->  graficas/assets/ciudad/
 AQUI = os.path.dirname(os.path.abspath(__file__))
