@@ -37,7 +37,7 @@ class Carro:
         self.Body_Ry = 0.0
         #rotacion de llantas frontales
         self.Ll_F_Ry = 0.0
-        self.Ll_F_max = 35.0 #giro max en grados
+        self.Ll_F_max = 45.0 #giro max en grados
         self.Ll_F_vel = 120.0 # grados por segundo del volante
         
         self.cos_ang = 0.0
@@ -226,3 +226,9 @@ class Carro:
         self.P_trasero = self.Position - self.Direction * self.d_eje
         self.Position[1] = self.altura
     
+    # Pose dada por una trayectoria (giros): la curva decide posición y ángulo,
+    # el volante sale de la curvatura y las llantas ruedan según la distancia.
+    def colocar_en_curva(self, x, z, ang, volante, d):
+        self.set_pose(x, z, ang)
+        self.Ll_F_Ry = max(-self.Ll_F_max, min(self.Ll_F_max, volante))
+        self.LlantaT_angZ -= d / self.Llanta_radio

@@ -12,6 +12,7 @@ from graficas.ciudad.mainCiudad import (preparar_ciudad, dibujar_ciudad, actuali
 from graficas.ciudad.modelosCiudad import configurar_luz, posicionar_luz
 from graficas.coche.carro import cargar_piezas
 from graficas.coche.seguidor import CocheGrafico
+from graficas.coche import seguidor
 from agentes.fuente_demo import FuenteDemo
 from agentes.contrato import T_PASO
 
@@ -77,6 +78,7 @@ def main():
     frames = 0
     done = False
     acumulado = 0.0 # segundos desde el último paso lógico
+    escala = 1.0 # velocidad de la simulación (L: cámara lenta)
     while not done:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -84,11 +86,15 @@ def main():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     alternar_pausa()  # congela / reanuda los semáforos
+                elif event.key == pygame.K_l:
+                    escala = 0.2 if escala == 1.0 else 1.0  # disminuye la velocidad (cámara lenta)
+                elif event.key == pygame.K_t:
+                    seguidor.MOSTRAR_RUTA = not seguidor.MOSTRAR_RUTA
                 elif not camara.tecla_evento(event.key):
                     done = True
 
         camara.teclas_continuas(pygame.key.get_pressed())
-        dt = reloj.tick(FPS_OBJETIVO) / 1000  # segundos desde el frame anterior
+        dt = reloj.tick(FPS_OBJETIVO) / 1000 * escala # segundos desde el frame anterior
         actualizar_ciudad(dt)  # semáforos (demo por tiempo)
         # Lógica: un paso cada T_PASO segundos (como máximo uno por frame)
         acumulado += dt   # 1. suma lo que duró este frame
