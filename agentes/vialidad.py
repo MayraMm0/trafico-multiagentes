@@ -93,6 +93,63 @@ def maniobras(f, c, d):
         ops.append(IZQ)
     return ops or [RECTO]
 
+# Maniobras que puede pedir un coche parado en la línea de alto (f, c) con sentido d:
+# recorre en recto las celdas del cruce y junta los giros posibles; RECTO si sale derecho.
+def maniobras_en_cruce(f, c, d):
+    cruce = LINEAS_DE_ALTO[(f, c)]
+    posibles = set()
+    f, c = f + d[0], c + d[1]                    # primera celda dentro del cruce
+    while cruce_de(f, c) == cruce:
+        ch = MAPA[f][c]
+        if ch in FLECHAS:
+            if FLECHAS[ch] != d:                 # incorporación obligada: sigue la flecha
+                return sorted(posibles | {maniobra_hacia(d, FLECHAS[ch])})
+        else:                                    # R, L o +
+            ops = maniobras(f, c, d)
+            posibles |= set(ops) - {RECTO}
+            if RECTO not in ops:                 # aquí tiene que girar
+                return sorted(posibles)
+        f, c = f + d[0], c + d[1]
+    return sorted(posibles | {RECTO})            # salió del cruce en recto
+
+
+# Celdas que recorrerá un coche desde la línea de alto (f, c) haciendo 'intencion',
+# hasta su primera celda fuera del cruce (incluida). Misma regla que AgenteCoche._decidir.
+def ruta_en_cruce(f, c, d, intencion):
+    cruce = LINEAS_DE_ALTO[(f, c)]
+    ruta, ya_giro, maniobra = [], False, None
+    for _ in range(FILAS * COLS):
+        d = girar(d, maniobra) if maniobra in (IZQ, DER) else d
+        ya_giro = ya_giro or maniobra in (IZQ, DER)
+        f, c = f + d[0], c + d[1]
+        ruta.append((f, c))
+        if cruce_de(f, c) != cruce:              # ya salió del cruce
+            return ruta
+        ch, maniobra = MAPA[f][c], None
+        if ch in FLECHAS:
+            if FLECHAS[ch] != d:
+                maniobra = maniobra_hacia(d, FLECHAS[ch])
+        elif not ya_giro:
+            ops = maniobras(f, c, d)
+            maniobra = intencion if intencion in ops else (RECTO if RECTO in ops else ops[0])
+    return ruta
+
+# Celdas vecinas de T desde las que OTRO coche podría entrar a T (para ceder el paso).
+# Ignora la celda de donde viene el coche (desde) y la que está enfrente de T.
+# Si la vecina es R/L/+ no se sabe su sentido: se considera posible (conservador).
+def vecinos_que_entran(T, desde, d):
+    vecinos = []
+    for e in FLECHAS.values():                   # e = sentido con el que el otro entraría
+        n = (T[0] - e[0], T[1] - e[1])
+        if n == desde or e == (-d[0], -d[1]):
+            continue
+        if not es_calle(*n) or not transitable(*T, e):
+            continue
+        ch = MAPA[n[0]][n[1]]
+        if ch in FLECHAS and FLECHAS[ch] != e:   # esa flecha no apunta hacia T
+            continue
+        vecinos.append(n)
+    return vecinos
 
 # Entradas: dónde reaparece un coche (n constante)
 # Celda de orilla con borde abierto cuyo sentido apunta hacia adentro.
