@@ -327,19 +327,28 @@ ENTRADAS = _entradas()
 # para el coordinador
 
 def _semaforo_de_alto():
-    """{(f, c): id_semaforo} para cada línea de alto."""
-    # TODO: por cada (f, c), cruce en LINEAS_DE_ALTO.items():
-    #           buscar el semáforo s de SEMAFOROS con s['cruce'] == cruce
-    #           y MAPA[f][c] en s['accesos']  → res[(f, c)] = s['id']
+
+    res = {}
+    for (f, c), cruce in LINEAS_DE_ALTO.items():
+        for s in SEMAFOROS:
+            if s['cruce'] == cruce and MAPA[f][c] in s['accesos']:
+                res[(f, c)] = s['id']
+    return res
+
 
 SEMAFORO_DE_ALTO = _semaforo_de_alto()
 
+
 def celdas_cola(f, c, n):
-    """Sensor de piso: hasta n celdas DETRÁS de la línea de alto (f, c), en su mismo carril."""
-    # TODO: ch = MAPA[f][c];  d = FLECHAS[ch]
-    # TODO: para k = 1..n:  (g, h) = (f - d[0]*k, c - d[1]*k)
-    #       si sale del mapa o MAPA[g][h] != ch → parar (ya no es el mismo carril)
-    #       si no → agregar (g, h)
+    ch = MAPA[f][c]
+    d = FLECHAS[ch]
+    res = []
+    for k in range(1, n + 1):
+        g, h = f - d[0] * k, c - d[1] * k
+        if not en_mapa(g, h) or MAPA[g][h] != ch:
+            break
+        res.append((g, h))
+    return res
 
 if __name__ == "__main__":
     print(FILAS, COLS)
