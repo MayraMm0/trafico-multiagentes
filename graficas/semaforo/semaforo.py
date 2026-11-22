@@ -5,8 +5,6 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from ..ciudad.mapa import CELL, celda_a_mundo, centro_interseccion
 from ..ciudad.decoracion import caja
-from ..ciudad.mapa import CELL, celda_a_mundo, centro_interseccion
-from ..ciudad.decoracion import caja
 
 VERDE, AMARILLO, ROJO = 'VERDE', 'AMARILLO', 'ROJO'
 COLORES_ON  = {ROJO: (255, 40, 40), AMARILLO: (255, 200, 0), VERDE: (40, 230, 70)}
@@ -54,7 +52,9 @@ class Semaforo:
         self.angulo = math.degrees(math.atan2(cx - self.x, cz - self.z))
 
     def set_estado(self, estado):
-        self.estado = estado
+        """Solo PINTA el color que le digan (el control vive en los agentes).
+        Cualquier luz que no sea VERDE/AMARILLO/ROJO (p. ej. 'TODO_ROJO') se pinta en rojo."""
+        self.estado = estado if estado in (VERDE, AMARILLO) else ROJO
 
     def draw(self):
         glPushMatrix()
@@ -85,7 +85,9 @@ class Semaforo:
         glPopMatrix()
 
 
-# Control por tiempo (demo; después lo reemplaza AgentPy)
+# ---------- CONTROL POR TIEMPO: SOLO PARA LA DEMO DE LA CIUDAD SOLA ----------
+# En la simulación NO se usa: quien decide es el Coordinador (agentes) y el color
+# llega en el snapshot del MundoModelo (ver mainCiudad.aplicar_luces).
 T_VERDE, T_AMARILLO = 6.0, 1.5
 
 

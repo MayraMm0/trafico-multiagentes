@@ -16,15 +16,30 @@ from graficas.coche import seguidor
 from agentes.fuente_demo import FuenteDemo
 from agentes.contrato import T_PASO
 
+
+from graficas import camara
+from graficas.ciudad.mainCiudad import (preparar_ciudad, dibujar_ciudad, actualizar_ciudad,
+                                        aplicar_luces, alternar_pausa, Y_CALLE)
+from graficas.ciudad.modelosCiudad import configurar_luz, posicionar_luz
+from graficas.coche.carro import cargar_piezas
+from graficas.coche.flota import posiciones_de_prueba, crear_flota, dibujar_flota
+
 SCREEN_W, SCREEN_H = 1400, 800
 FOVY, ZNEAR, ZFAR = 60.0, 1.0, 300.0
 CIELO = (103 / 255, 166 / 255, 224 / 255)
 FPS_OBJETIVO = 60  # 0 = sin límite (para medir). Ya optimizado: 60
 POSICIONES = [(1, 2, '>')]   # (f, c, flecha) iniciales; las mismas que recibirá MundoModelo
+N_COCHES = 15
 
 fuente = None # quién produce los snapshots (hoy FuenteDemo, después MundoModelo)
 coches = {}  # id -> CocheGrafico
 
+USAR_MODELO = False
+T_PASO = 0.5         # segundos por paso del modelo (igual que agentes/contrato.py)
+
+carros = []
+modelo = None
+snapshot = None
 
 
 def init():
@@ -46,12 +61,29 @@ def init():
     glEnable(GL_NORMALIZE)  # la escala 0.46 encoge las normales; esto las corrige
 
     # Recursos: todo después de crear la ventana
-    preparar_ciudad()  # modelos, edificios, decoración, semáforos y display list (UNA vez)
+    # modelos, edificios, decoración, semáforos y display list (UNA vez)
+    preparar_ciudad(modo='simulacion' if USAR_MODELO else 'demo')
     piezas = cargar_piezas()
-    global fuente
-    fuente = FuenteDemo(POSICIONES)
-    for snap in fuente.estado_inicial():
-        coches[snap['id']] = CocheGrafico(snap, piezas)
+    carros.extend(crear_flota(posiciones_de_prueba(N_COCHES), piezas))
+
+    if USAR_MODELO:
+        iniciar_modelo()
+
+
+def iniciar_modelo():
+    """Crea el MundoModelo y aplica su primer snapshot."""
+    global modelo, snapshot
+    from agentes.mundoModelo import MundoModelo  # aquí adentro: con USAR_MODELO=False no se necesita
+    modelo = MundoModelo({'n_coches': N_COCHES, 'steps': 10 ** 9, 'seed': 1})
+    snapshot = modelo.estado_inicial()
+    aplicar_snapshot(snapshot)
+
+
+def aplicar_snapshot(s):
+    """Puente lógica -> gráficos: lo que diga el modelo en este paso."""
+    aplicar_luces(s['semaforos'])  # semáforos: {sid: luz}
+    # TODO (Mayra): actualizar la flota con s['coches'] (id, f, c, sentido, estado, maniobra)
+
 
 def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -66,8 +98,7 @@ def display():
     # Coches: con luz y sombreado suave
     glEnable(GL_LIGHTING)
     glShadeModel(GL_SMOOTH)
-    for coche in coches.values():
-        coche.dibujar(Y_CALLE)
+    dibujar_flota(carros, Y_CALLE)
     glDisable(GL_LIGHTING)
 
 
@@ -76,9 +107,8 @@ def main():
     init()
     reloj = pygame.time.Clock()
     frames = 0
+    acumulado = 0.0  # tiempo desde el último paso del modelo
     done = False
-    acumulado = 0.0 # segundos desde el último paso lógico
-    escala = 1.0 # velocidad de la simulación (L: cámara lenta)
     while not done:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -86,29 +116,19 @@ def main():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     alternar_pausa()  # congela / reanuda los semáforos
-                elif event.key == pygame.K_l:
-                    escala = 0.2 if escala == 1.0 else 1.0  # disminuye la velocidad (cámara lenta)
-                elif event.key == pygame.K_t:
-                    seguidor.MOSTRAR_RUTA = not seguidor.MOSTRAR_RUTA
                 elif not camara.tecla_evento(event.key):
                     done = True
 
         camara.teclas_continuas(pygame.key.get_pressed())
-        dt = reloj.tick(FPS_OBJETIVO) / 1000 * escala # segundos desde el frame anterior
-        actualizar_ciudad(dt)  # semáforos (demo por tiempo)
-        # Lógica: un paso cada T_PASO segundos (como máximo uno por frame)
-        acumulado += dt   # 1. suma lo que duró este frame
-        if acumulado >= T_PASO: # 2. ¿ya pasaron 0.5 s?
-            # 3. sí → un paso lógico
-            for snap in fuente.paso():  
-                coches[snap['id']].recibir(snap)
-            # 4. resta, no reinicia
-            acumulado = min(acumulado - T_PASO, T_PASO)
-
-        # Gráfico: cada coche avanza hacia su celda objetivo
-        for coche in coches.values():
-            coche.actualizar(dt, T_PASO - acumulado) # 5. cuánto falta
-            
+        dt = reloj.tick(FPS_OBJETIVO) / 1000  # segundos desde el frame anterior
+        if USAR_MODELO:
+            # un paso del modelo cada T_PASO segundos reales (el dibujo sigue a 60 FPS)
+            acumulado += dt
+            while acumulado >= T_PASO:
+                acumulado -= T_PASO
+                aplicar_snapshot(modelo.paso())
+        else:
+            actualizar_ciudad(dt)  # semáforos con temporizador (demo)
         display()
         pygame.display.flip()
         frames += 1

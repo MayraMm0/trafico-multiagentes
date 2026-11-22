@@ -14,9 +14,9 @@ from .decoracion import (cargar_modelos, generar_edificios, generar_decoracion, 
 from ..semaforo.semaforo import Semaforo, ControlSemaforos, iniciar_quadric
 from .modelosCiudad import configurar_luz, posicionar_luz
 
-
 semaforos = []              # objetos Semaforo (uno por cada entrada de mapa.SEMAFOROS)
-control = None              # ControlSemaforos (demo por tiempo; después lo reemplaza AgentPy)
+semaforos_por_id = {}       # {sid: Semaforo} para aplicar las luces del snapshot
+control = None              # ControlSemaforos SOLO en modo 'demo'; en 'simulacion' es None
 lista_ciudad = None         # display list con todo lo que no se mueve
 pausa = False               # ESPACIO congela los semáforos
 
@@ -170,15 +170,18 @@ def _compilar_lista():
     return lista
 
 
-def preparar_ciudad():
-    """Carga y genera todo lo de la ciudad. Llamar UNA vez, DESPUÉS de crear la ventana."""
-    global semaforos, control, lista_ciudad
+def preparar_ciudad(modo='demo'):
+    """Carga y genera todo lo de la ciudad. Llamar UNA vez, DESPUÉS de crear la ventana.
+    modo='demo':       los semáforos cambian solos con un temporizador (ciudad sola).
+    modo='simulacion': los semáforos solo muestran lo que manda el modelo (aplicar_luces)."""
+    global semaforos, semaforos_por_id, control, lista_ciudad
     cargar_modelos()             # .obj de assets/ciudad (antes de generar_edificios)
     generar_edificios()          # usa random con semilla fija
     generar_decoracion()         # árboles y farolas (después de los edificios)
     iniciar_quadric()
     semaforos = [Semaforo(s) for s in SEMAFOROS]
-    control = ControlSemaforos(semaforos)
+    semaforos_por_id = {s.id: s for s in semaforos}
+    control = ControlSemaforos(semaforos) if modo == 'demo' else None
     lista_ciudad = _compilar_lista()
 
 
@@ -190,9 +193,19 @@ def dibujar_ciudad():
 
 
 def actualizar_ciudad(dt):
-    """Avanza los semáforos dt segundos (demo por tiempo; después lo reemplaza AgentPy)."""
-    if not pausa:
+    """SOLO modo demo: avanza el temporizador de los semáforos dt segundos.
+    En modo simulación no hace nada (el color lo manda el modelo)."""
+    if control is not None and not pausa:
         control.update(dt)
+
+
+def aplicar_luces(luces):
+    """Modo simulación: pinta los semáforos con el snapshot del modelo.
+    luces = snapshot['semaforos'] = {sid: luz}  (sid = id del mapa, 1-12)."""
+    for sid, luz in luces.items():
+        s = semaforos_por_id.get(sid)
+        if s is not None:
+            s.set_estado(luz)        # 'TODO_ROJO' se pinta como rojo
 
 
 def alternar_pausa():
@@ -200,7 +213,6 @@ def alternar_pausa():
     pausa = not pausa
 
 
-# solo ciudad
 def Init():
     pygame.display.set_mode((SCREEN_W, SCREEN_H), DOUBLEBUF | OPENGL)
     pygame.display.set_caption("Ciudad")
