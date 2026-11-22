@@ -5,6 +5,11 @@ from graficas.ciudad.mapa import (MAPA, FILAS, COLS, FLECHAS, INTERSECCIONES,
                                   en_mapa, es_calle, borde_abierto, girar_der, girar_izq)
 from agentes.contrato import RECTO, IZQ, DER
 
+## TEMPORAL: todo esto ya vive en graficas/ciudad/mapa.py.
+#from graficas.ciudad.mapa import (DIR_A_FLECHA, LINEAS_DE_ALTO, ESQUINAS, ENTRADAS, cruce_de,
+                                 # sale_del_mapa, transitable, lleva_a_carril, girar, maniobra_hacia,
+                                #  maniobras, maniobras_en_cruce, ruta_en_cruce, vecinos_que_entran)
+
 DIR_A_FLECHA = {d: ch for ch, d in FLECHAS.items()}  # (df, dc) -> '>' '<' '^' 'v'
 
 
