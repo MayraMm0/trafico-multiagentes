@@ -6,7 +6,7 @@ from agentes.vialidad import ENTRADAS, cruce_de        # luego: desde graficas.c
 from agentes.contrato import DIST_SEG
 from agentes.agenteCoche import AgenteCoche
 from agentes.agenteSemaforo import AgenteSemaforo
-# from agentes.coordinador import Coordinador
+from agentes.agenteCoordinador import AgenteCoordinador
 
 
 class MundoModelo(ap.Model):
@@ -14,8 +14,9 @@ class MundoModelo(ap.Model):
     def setup(self):
         self.ocupadas = set()
         self.reservadas = set()
-        self.coordinador = None   # Coordinador(self)
         self.semaforos = ap.AgentList(self, [AgenteSemaforo(self, datos=s) for s in SEMAFOROS])
+        # Un solo coordinador central administra los seis estados de cruce.
+        self.coordinador = AgenteCoordinador(self, semaforos=self.semaforos)
         self.coches = ap.AgentList(self, [AgenteCoche(self, f=f, c=c, flecha=fl) for f, c, fl in self.posiciones_iniciales(self.p['n_coches'])])
         self.reapariciones = 0
 
@@ -45,7 +46,7 @@ class MundoModelo(ap.Model):
     def step(self):
         self.reservadas.clear()
         self.ocupadas = {(c.f, c.c) for c in self.coches}
-        if self.coordinador is not None: self.coordinador.step()
+        self.coordinador.step()
         self.semaforos.step()
         self.coches.shuffle().step()
         self.reaparecer()
@@ -68,7 +69,22 @@ class MundoModelo(ap.Model):
 # parte grafica
 
     def snapshot(self):
-        return {'t': self.t,'coches': [c.snapshot() for c in self.coches],'semaforos': {s.sid: s.luz for s in self.semaforos}}
+        return {
+            't': self.t,
+            'coches': [c.snapshot() for c in self.coches],
+            'semaforos': {s.sid: s.luz for s in self.semaforos},
+            'cruces': {
+                cid: {
+                    'fase': estado.fase,
+                    'fase_objetivo': estado.fase_objetivo,
+                    'luz': estado.luz,
+                    'pendientes': len(estado.pendientes),
+                    'autorizados': len(estado.autorizados),
+                }
+                for cid, estado in self.coordinador.cruces.items()
+            },
+            'mensajes': dict(self.coordinador.contadores),
+        }
 
     def estado_inicial(self):
         self.sim_setup()

@@ -327,6 +327,7 @@ ENTRADAS = _entradas()
 # para el coordinador
 
 def _semaforo_de_alto():
+<<<<<<< HEAD
 
     res = {}
     for (f, c), cruce in LINEAS_DE_ALTO.items():
@@ -334,11 +335,29 @@ def _semaforo_de_alto():
             if s['cruce'] == cruce and MAPA[f][c] in s['accesos']:
                 res[(f, c)] = s['id']
     return res
+=======
+    """{(f, c): id_semaforo} para cada línea de alto."""
+    resultado = {}
+    for (f, c), id_cruce in LINEAS_DE_ALTO.items():
+        direccion = MAPA[f][c]
+        candidatos = [
+            sem for sem in SEMAFOROS
+            if sem['cruce'] == id_cruce and direccion in sem.get('accesos', [])
+        ]
+        if len(candidatos) != 1:
+            raise ValueError(
+                f"La línea de alto {(f, c)} del cruce {id_cruce} "
+                f"({direccion}) corresponde a {len(candidatos)} semáforos."
+            )
+        resultado[(f, c)] = candidatos[0]['id']
+    return resultado
+>>>>>>> 42e5d14 (Implementacion del agente coordinador de trafico)
 
 
 SEMAFORO_DE_ALTO = _semaforo_de_alto()
 
 
+<<<<<<< HEAD
 def celdas_cola(f, c, n):
     ch = MAPA[f][c]
     d = FLECHAS[ch]
@@ -349,6 +368,21 @@ def celdas_cola(f, c, n):
             break
         res.append((g, h))
     return res
+=======
+def celdas_cola(f, c, n=12):
+    """Regresa hasta n celdas detrás de la línea de alto, en el mismo carril."""
+    direccion = MAPA[f][c]
+    if direccion not in FLECHAS:
+        return []
+    df, dc = FLECHAS[direccion]
+    resultado = []
+    for k in range(1, n + 1):
+        g, h = f - df * k, c - dc * k
+        if not en_mapa(g, h) or MAPA[g][h] != direccion:
+            break
+        resultado.append((g, h))
+    return resultado
+>>>>>>> 42e5d14 (Implementacion del agente coordinador de trafico)
 
 if __name__ == "__main__":
     print(FILAS, COLS)

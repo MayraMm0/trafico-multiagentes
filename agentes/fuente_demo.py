@@ -1,5 +1,5 @@
-# Fuente DEMO de snapshots: 1 celda por paso y giros al azar en R, L y + (sin Agentpy).
-# Misma interfaz que tendrá MundoModelo: estado_inicial() y paso().
+# Fuente DEMO heredada, conservada para pruebas gráficas aisladas.
+# La simulación principal usa MundoModelo y AgenteCoordinador.
 import random
 from graficas.ciudad.mapa import MAPA, FLECHAS, girar_der, girar_izq
 from agentes.vialidad import DIR_A_FLECHA, transitable, maniobras

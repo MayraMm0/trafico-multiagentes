@@ -6,7 +6,8 @@ from agentes.vialidad import (DIR_A_FLECHA, LINEAS_DE_ALTO, cruce_de, sale_del_m
                               maniobra_hacia, girar, vecinos_que_entran)
 from agentes.contrato import (AVANZANDO, DETENIDO, ESPERANDO_PASO, CEDIENDO, EN_CRUCE,
                               RECTO, IZQ, DER, T_PASO, DIST_SEG,
-                              SOLICITAR_PASO, PASAR, INFORMAR_SALIDA)
+                              SOLICITAR_PASO, PASAR, INFORMAR_SALIDA,
+                              REQUEST, INFORM, PERFORMATIVAS)
 
 PACIENCIA = 6  # pasos máximos cediendo (3 s); después entra igual (evita que dos se cedan siempre)
 
@@ -32,24 +33,30 @@ class AgenteCoche(ap.Agent):
     # Percepción: Solo lo que tiene enfrente (sentido d), sobre el inicio del paso
     def percibir(self, ocupadas, d=None):
         df, dc = d or self.dir
-        adelante = [(self.f + df * k, self.c + dc * k) for k in range(1, DIST_SEG + 2)]
+        # En carretera se conserva la distancia de seguridad de 2 celdas.
+        # Dentro del cruce basta revisar la siguiente celda: la ruta completa
+        # y su salida ya se validaron antes de entrar. Así una cola en el cruce
+        # vecino no bloquea artificialmente la salida de esta intersección.
+        alcance = 1 if self.estado == EN_CRUCE else DIST_SEG + 1
+        adelante = [(self.f + df * k, self.c + dc * k) for k in range(1, alcance + 1)]
         return {
             'libre': not any(p in ocupadas for p in adelante), # destino + DIST_SEG celdas
             'linea_alto': LINEAS_DE_ALTO.get((self.f, self.c)), # id del cruce o None
             'sale': sale_del_mapa(self.f, self.c, (df, dc)), # borde abierto enfrente
         }
         
-    # Percepción de maniobra en cruce: está libre su celda de salida?
-    # Si no -> no entra, para no bloquear intersección
+    # Percepción de maniobra en cruce: toda la ruta y la celda de salida están libres?
+    # Si alguna celda está ocupada, no entra para no bloquear la intersección.
     def salida_libre(self, ocupadas):
         ruta = ruta_en_cruce(self.f, self.c, self.dir, self.intencion)
-        return ruta[-1] not in ocupadas # celda de salida libre?
+        return bool(ruta) and not any(celda in ocupadas for celda in ruta)
+        # Se comprueba toda la trayectoria y la celda de salida, no solo el final.
     
     # Percepción para ceder: hay otro coche junto a su destino que podría entrar ahí?
     # Solo cede quien gira o se incorpora (fuera de cruces con semáforo); el que va recto en
     # su carril tiene prioridad y no revisa.
     def debe_ceder(self, ocupadas, destino, d, giro):
-        if self.estado == EN_CRUCE:                  # en el cruce manda el Coordinador
+        if self.estado in (ESPERANDO_PASO, EN_CRUCE):  # en el cruce manda el Coordinador
             return False
         ch = MAPA[destino[0]][destino[1]]
         se_incorpora = ch in FLECHAS and FLECHAS[ch] != d
@@ -84,7 +91,10 @@ class AgenteCoche(ap.Agent):
             self.t_espera += 1
             return 
         
-        puede = (p['libre'] and transitable(*destino, d)
+        # Con permiso, salida_libre() ya revisó toda la ruta del cruce.
+        # Fuera del cruce se conserva la distancia de seguridad original.
+        libre_delante = (self.estado == ESPERANDO_PASO) or p['libre']
+        puede = (libre_delante and transitable(*destino, d)
                  and destino not in self.model.reservadas)
         
         if puede:
@@ -164,6 +174,7 @@ class AgenteCoche(ap.Agent):
     def enviar(self, destino, tipo, **campos):
         mensaje = {
             'tipo': tipo,
+            'performativa': PERFORMATIVAS.get(tipo, INFORM),
             'emisor': self,
             'destino': destino,
             't': self.model.t,

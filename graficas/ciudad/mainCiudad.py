@@ -189,8 +189,16 @@ def dibujar_ciudad():
         s.draw()
 
 
+
+def aplicar_snapshot(snapshot):
+    """Actualiza los semáforos 3D con las luces del MundoModelo/Coordinador."""
+    luces = snapshot.get('semaforos', {})
+    for semaforo in semaforos:
+        semaforo.set_estado(luces.get(semaforo.id, 'ROJO'))
+
+
 def actualizar_ciudad(dt):
-    """Avanza los semáforos dt segundos (demo por tiempo; después lo reemplaza AgentPy)."""
+    """Avanza el control temporal si se ejecuta solo la ciudad (modo demo)."""
     if not pausa:
         control.update(dt)
 

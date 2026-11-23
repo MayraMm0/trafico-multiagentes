@@ -6,8 +6,7 @@ from agentes.contrato import CAMBIAR_FASE
 
 class AgenteSemaforo(ap.Agent):
     def setup(self, datos):
-    # datos es el diccionario de SEMAFORO de mapa.py
-        self.sid = datos['id']
+        self.sid = datos['id']       # ID del mapa (1-12), no el ID interno de AgentPy
         self.cruce = datos['cruce']
         self.luz = 'ROJO'
         self.buzon = []
@@ -16,9 +15,10 @@ class AgenteSemaforo(ap.Agent):
         self.buzon.append(msg)
 
     def step(self):
-        for msg in self.buzon:
-            if msg['tipo'] == CAMBIAR_FASE:
-                self.luz = msg['luz']
-            self.buzon.pop()
+        mensajes, self.buzon = self.buzon, []
+        for msg in mensajes:
+            if msg.get('tipo') == CAMBIAR_FASE:
+                self.luz = msg.get('luz', 'ROJO')
+
 
 
