@@ -27,8 +27,6 @@ fuente = None # MundoModelo: fuente única de la lógica de tráfico
 piezas = None # Recursos gráficos del coche
 coches = {}  # id -> CocheGrafico
 
-
-
 def init():
     pygame.display.set_mode((SCREEN_W, SCREEN_H), DOUBLEBUF | OPENGL)
     pygame.display.set_caption("Simulación de tráfico")
@@ -49,8 +47,8 @@ def init():
 
     # Recursos: todo después de crear la ventana
     preparar_ciudad()  # modelos, edificios, decoración, semáforos y display list (UNA vez)
+    global fuente, piezas
     piezas = cargar_piezas()
-    global fuente
     fuente = MundoModelo({'n_coches': N_COCHES, 'steps': 10**9, 'seed': 7})
     estado = fuente.estado_inicial()
     ciudad.aplicar_snapshot(estado)

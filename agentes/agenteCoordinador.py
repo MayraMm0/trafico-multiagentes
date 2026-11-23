@@ -9,9 +9,8 @@ from math import factorial
 
 from graficas.ciudad.mapa import (
     INTERSECCIONES, SEMAFOROS, MAPA, FLECHAS, LINEAS_DE_ALTO,
-    SEMAFORO_DE_ALTO, celdas_cola,
+    SEMAFORO_DE_ALTO, celdas_cola, maniobras_en_cruce, ruta_en_cruce,
 )
-from agentes.vialidad import maniobras_en_cruce, ruta_en_cruce
 from agentes.contrato import (
     SOLICITAR_PASO, PASAR, INFORMAR_SALIDA, CAMBIAR_FASE,
     REQUEST, AGREE, INFORM,
@@ -139,8 +138,8 @@ class AgenteCoordinador(ap.Agent):
                     continue
                 if coche.id in estado.autorizados:
                     continue
-                if any(p['coche'].id == coche.id for p in estado.pendientes):
-                    continue
+                # Una nueva solicitud del mismo coche (cambió de maniobra) reemplaza la anterior.
+                estado.pendientes = [p for p in estado.pendientes if p['coche'].id != coche.id]
                 estado.pendientes.append({
                     'coche': coche,
                     'id_coche': coche.id,

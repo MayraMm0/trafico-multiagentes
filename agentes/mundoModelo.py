@@ -1,8 +1,7 @@
 # El mundo: crea los agentes, ordena el paso y entrega un snapshot para la parte gráfica.
 # Parámetros (self.p): 'n_coches', 'steps', 'seed'.   Después: 'politica', pesos del coordinador...
 import agentpy as ap
-from graficas.ciudad.mapa import MAPA, FLECHAS, FILAS, COLS, SEMAFOROS
-from agentes.vialidad import ENTRADAS, cruce_de        # luego: desde graficas.ciudad.mapa
+from graficas.ciudad.mapa import MAPA, FLECHAS, FILAS, COLS, SEMAFOROS, ENTRADAS, cruce_de       # luego: desde graficas.ciudad.mapa
 from agentes.contrato import DIST_SEG
 from agentes.agenteCoche import AgenteCoche
 from agentes.agenteSemaforo import AgenteSemaforo
@@ -58,7 +57,10 @@ class MundoModelo(ap.Model):
         for coche in self.coches:
             if not coche.salio:
                 continue
-            libres = [(f, c, fl) for (f, c, fl) in ENTRADAS if (f, c) not in ocupadas_ahora]
+            # la entrada y las DIST_SEG celdas de enfrente deben estar libres
+            libres = [(f, c, fl) for (f, c, fl) in ENTRADAS
+                      if all((f + FLECHAS[fl][0] * k, c + FLECHAS[fl][1] * k) not in ocupadas_ahora
+                             for k in range(DIST_SEG + 1))]
             if libres:
                 f, c, fl = self.random.choice(libres)
                 coche.reaparecer(f, c, fl)  # vuelve con salio = False

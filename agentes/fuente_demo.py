@@ -2,7 +2,7 @@
 # La simulación principal usa MundoModelo y AgenteCoordinador.
 import random
 from graficas.ciudad.mapa import MAPA, FLECHAS, girar_der, girar_izq
-from agentes.vialidad import DIR_A_FLECHA, transitable, maniobras
+from graficas.ciudad.mapa import DIR_A_FLECHA, transitable, maniobras
 from agentes.contrato import AVANZANDO, DETENIDO, DIST_SEG, RECTO, IZQ, DER
 
 

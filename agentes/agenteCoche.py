@@ -1,7 +1,7 @@
 #Agente coche decide sobre celdas, lo gráfico solo dibuja
 import agentpy as ap
 from graficas.ciudad.mapa import MAPA, FLECHAS
-from agentes.vialidad import (DIR_A_FLECHA, LINEAS_DE_ALTO, cruce_de, sale_del_mapa,
+from graficas.ciudad.mapa import (DIR_A_FLECHA, LINEAS_DE_ALTO, cruce_de, sale_del_mapa,
                               transitable, maniobras, maniobras_en_cruce, ruta_en_cruce,
                               maniobra_hacia, girar, vecinos_que_entran)
 from agentes.contrato import (AVANZANDO, DETENIDO, ESPERANDO_PASO, CEDIENDO, EN_CRUCE,
@@ -10,6 +10,7 @@ from agentes.contrato import (AVANZANDO, DETENIDO, ESPERANDO_PASO, CEDIENDO, EN_
                               REQUEST, INFORM, PERFORMATIVAS)
 
 PACIENCIA = 6  # pasos máximos cediendo (3 s); después entra igual (evita que dos se cedan siempre)
+PACIENCIA_RUTA = 10  # pasos máximos cediendo (3 s); después entra igual (evita que dos se cedan siempre)
 
 class AgenteCoche(ap.Agent):
     def setup(self, f, c, flecha):
@@ -73,6 +74,8 @@ class AgenteCoche(ap.Agent):
             self._pedir_paso() # p. ej. apareció justo en la línea de alto
         if self.estado == ESPERANDO_PASO and not (self.permiso and self.salida_libre(self.model.ocupadas)):
             self.t_espera += 1
+            if not self.permiso and self.t_espera >= PACIENCIA_RUTA:
+                self._cambiar_ruta() # su salida sigue bloqueada: prueba otra maniobra
             return # sigue esperando
         
         giro = self.maniobra in (IZQ, DER)
@@ -139,7 +142,20 @@ class AgenteCoche(ap.Agent):
             self.estado = AVANZANDO
         if (self.f, self.c) in LINEAS_DE_ALTO and self.estado == AVANZANDO:
             self._pedir_paso()
-            
+       
+    # Si lleva mucho esperando, y otra maniobra está libre, la pide
+    def _cambiar_ruta(self):
+        if self.coordinador is None:
+            return
+        otras = [m for m in maniobras_en_cruce(self.f, self.c, self.dir) if m != self.intencion]
+        libres = [m for m in otras
+                  if not any(p in self.model.ocupadas
+                             for p in ruta_en_cruce(self.f, self.c, self.dir, m))]
+        if libres:
+            self.intencion = self.model.random.choice(libres)
+            self.enviar(self.coordinador, SOLICITAR_PASO, cruce=self.cruce,
+                        acceso=(self.f, self.c), maniobra=self.intencion)
+         
     # En la línea de alto: sortea su maniobra y pide paso (SOLICITAR_PASO)
     def _pedir_paso(self):
         self.cruce = LINEAS_DE_ALTO[(self.f, self.c)]
