@@ -47,7 +47,7 @@ class AgenteCoordinador(ap.Agent):
         self.semaforos = {s.sid: s for s in semaforos}
 
         # Tiempos expresados en pasos de 0.5 segundos.
-        self.T_VERDE_MIN = 6
+        self.T_VERDE_MIN = 12
         self.T_VERDE_MAX = 24
         self.T_AMARILLO = 3
         self.T_COLA_MAX = 12

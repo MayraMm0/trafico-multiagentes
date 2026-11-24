@@ -21,7 +21,7 @@ SCREEN_W, SCREEN_H = 1400, 800
 FOVY, ZNEAR, ZFAR = 60.0, 1.0, 300.0
 CIELO = (103 / 255, 166 / 255, 224 / 255)
 FPS_OBJETIVO = 60  # 0 = sin límite (para medir). Ya optimizado: 60
-N_COCHES = 25
+N_COCHES = 20
 
 fuente = None # MundoModelo: fuente única de la lógica de tráfico
 piezas = None # Recursos gráficos del coche
