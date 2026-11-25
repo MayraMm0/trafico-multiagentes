@@ -40,6 +40,15 @@ MANZANAS_ESPECIALES = {
     5: {'modelo': 'vips', 'rot': 0},         # entrada hacia la avenida media
 }
 
+FACHADAS = {
+    0: 'building6',
+    1: 'building4',
+    2: 'building3',
+    3: 'building1',
+    4: 'building5',
+    5: 'building2',
+}
+
 edificios = []                   # se llena UNA vez en generar_edificios()
 especiales = []                  # modelos colocados en manzanas
 manzanas = []
@@ -71,11 +80,24 @@ farolas = []
 _q = None
 
 TEXTURAS = {
-    'pasto':    ('texturas/pasto5.png', 1.4),    #  metros de una repetición
-    'asfalto':  ('texturas/pavimento.png', 3.0),
+    'pasto':    ('texturas/pasto.png', 1.4),
+    'asfalto':  ('texturas/asfalto.png', 3.0),
     'banqueta': ('texturas/banqueta.png', 1.9),
+    # Fachadas de los edificios de cubos (una repetición = cuadrado de N metros)
+    'building1': ('texturas/edificios/building1.png', 3.0),    # muro rojo con ladrillo expuesto
+    'building2': ('texturas/edificios/building2.png', 3.0),    # aplanado deteriorado
+    'building3': ('texturas/edificios/building3.png', 2.0),    # ladrillo
+    'building4': ('texturas/edificios/building4.png', 18.0),   # Facade018A: 6 pisos x 6 ventanas
+    'building5': ('texturas/edificios/building5.png', 18.0),   # Facade020A: 6 pisos x 6 ventanas
+    'building6': ('texturas/edificios/building6.png', 24.0),   # Facade006: 8 pisos x 14 ventanas
 }
-_tex = {}
+
+FACHADAS_ALTOS = ['building4', 'building5', 'building6']   # con ventanas
+FACHADAS_BAJOS = ['building1', 'building2', 'building3']   # muros
+ALTURA_ALTO = 8.0                                          # metros: más alto que esto = "alto"
+COLOR_TECHO = (120, 120, 125)
+_tex = {}      # nombre -> id de OpenGL (o None si no se pudo cargar)
+
 
 def encontrar_manzanas():
     """Agrupa las celdas '#' conectadas y regresa sus rectángulos (f0, f1, c0, c1)."""
@@ -198,10 +220,70 @@ def dibujar_banquetas():
         glEnd()
         dejar_textura()
 
+def asignar_fachadas():
+    rnd = random.Random(SEMILLA + 2)
+    mazos = {}
+    for nombre_grupo, grupo in (('altos', FACHADAS_ALTOS), ('bajos', FACHADAS_BAJOS)):
+        disponibles = [n for n in grupo if _tex.get(n) is not None]
+        rnd.shuffle(disponibles)
+        mazos[nombre_grupo] = disponibles
+    usados = {'altos': 0, 'bajos': 0}
+    for i, e in enumerate(edificios):
+        if i in FACHADAS and _tex.get(FACHADAS[i]) is not None:
+            e['fachada'] = FACHADAS[i]
+
+
+
+def caja_con_fachada(x0, x1, y0, y1, z0, z1, fachada, color_techo):
+    """Como caja(), pero los 4 lados llevan la textura de fachada.
+    La textura arranca en la base (y0): así la planta baja queda abajo y los pisos van subiendo."""
+    t = TEXTURAS[fachada][1]                 # metros que mide una repetición
+
+    # Techo: color liso (gris), sin textura
+    glColor3ub(*color_techo)
+    glBegin(GL_QUADS)
+    glNormal3f(0, 1, 0)
+    glVertex3f(x0, y1, z0); glVertex3f(x0, y1, z1); glVertex3f(x1, y1, z1); glVertex3f(x1, y1, z0)
+    glEnd()
+
+    usar_textura(fachada)
+    glBegin(GL_QUADS)
+    # Lados que miran a +Z y -Z: la textura avanza en X.  Sombra falsa al 85 %.
+    glColor3f(0.85, 0.85, 0.85)              # gris en lugar de blanco = sombra (la textura se multiplica)
+    glNormal3f(0, 0, 1)
+    glTexCoord2f(x0 / t, 0);             glVertex3f(x0, y0, z1)
+    glTexCoord2f(x1 / t, 0);             glVertex3f(x1, y0, z1)
+    glTexCoord2f(x1 / t, (y1 - y0) / t); glVertex3f(x1, y1, z1)
+    glTexCoord2f(x0 / t, (y1 - y0) / t); glVertex3f(x0, y1, z1)
+    glNormal3f(0, 0, -1)
+    glTexCoord2f(-x1 / t, 0);             glVertex3f(x1, y0, z0)
+    glTexCoord2f(-x0 / t, 0);             glVertex3f(x0, y0, z0)
+    glTexCoord2f(-x0 / t, (y1 - y0) / t); glVertex3f(x0, y1, z0)
+    glTexCoord2f(-x1 / t, (y1 - y0) / t); glVertex3f(x1, y1, z0)
+    # Lados que miran a +X y -X: la textura avanza en Z.  Sombra falsa al 70 %.
+    glColor3f(0.70, 0.70, 0.70)
+    glNormal3f(1, 0, 0)
+    glTexCoord2f(-z1 / t, 0);             glVertex3f(x1, y0, z1)
+    glTexCoord2f(-z0 / t, 0);             glVertex3f(x1, y0, z0)
+    glTexCoord2f(-z0 / t, (y1 - y0) / t); glVertex3f(x1, y1, z0)
+    glTexCoord2f(-z1 / t, (y1 - y0) / t); glVertex3f(x1, y1, z1)
+    glNormal3f(-1, 0, 0)
+    glTexCoord2f(z0 / t, 0);             glVertex3f(x0, y0, z0)
+    glTexCoord2f(z1 / t, 0);             glVertex3f(x0, y0, z1)
+    glTexCoord2f(z1 / t, (y1 - y0) / t); glVertex3f(x0, y1, z1)
+    glTexCoord2f(z0 / t, (y1 - y0) / t); glVertex3f(x0, y1, z0)
+    glEnd()
+    dejar_textura()
+
+
+
 def dibujar_edificios():
     for e in edificios:
-        caja(e['x0'], e['x1'], Y_BANQUETA, Y_BANQUETA + e['altura'],
-             e['z0'], e['z1'], e['color'])
+        y0, y1 = Y_BANQUETA, Y_BANQUETA + e['altura']
+        if e.get('fachada'):
+            caja_con_fachada(e['x0'], e['x1'], y0, y1, e['z0'], e['z1'], e['fachada'], COLOR_TECHO)
+        else:                                # respaldo: sin textura, el color de siempre
+            caja(e['x0'], e['x1'], y0, y1, e['z0'], e['z1'], e['color'])
     for e in especiales:
         modelos.dibujar_ajustado(e['modelo'], e['x0'], e['x1'], e['z0'], e['z1'],
                                  Y_BANQUETA, e['rot'])
@@ -397,7 +479,7 @@ def dibujar_farolas():
 #texturas
 
 def cargar_texturas():
-    """UNA vez, después de crear la ventana y ANTES de compilar la display list."""
+    """Llamar UNA vez después de crear la ventana (antes de compilar la display list)."""
     for nombre, (ruta, _) in TEXTURAS.items():
         archivo = os.path.join(modelos.ASSETS, ruta)
         try:
@@ -409,6 +491,7 @@ def cargar_texturas():
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            # mipmaps: versiones más chicas para lo lejano (evita el "hormigueo" a lo lejos)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
             gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, ancho, alto, GL_RGBA, GL_UNSIGNED_BYTE, datos)
             glBindTexture(GL_TEXTURE_2D, 0)
@@ -417,25 +500,30 @@ def cargar_texturas():
             print(f"[decoracion] textura '{nombre}' no disponible ({archivo}): {e}. Uso color liso.")
             _tex[nombre] = None
 
+
 def usar_textura(nombre):
-    """Activa la textura; regresa False si no existe (entonces se usa color)."""
+    """Activa la textura. Regresa False si no existe (entonces se dibuja con color)."""
     tid = _tex.get(nombre)
     if tid is None:
         return False
     glEnable(GL_TEXTURE_2D)
     glBindTexture(GL_TEXTURE_2D, tid)
-    glColor3f(1.0, 1.0, 1.0)
+    glColor3f(1.0, 1.0, 1.0)          # blanco: si no, el color actual tiñe la textura
     return True
 
+
 def dejar_textura():
-    glBindTexture(GL_TEXTURE_2D, 0); glDisable(GL_TEXTURE_2D)
+    glBindTexture(GL_TEXTURE_2D, 0)
+    glDisable(GL_TEXTURE_2D)
+
 
 def quad_texturizado(x0, x1, z0, z1, y, nombre):
-    """Quad plano dentro de un glBegin(GL_QUADS). Textura en coordenadas del MUNDO."""
+    """Quad plano. Coordenadas de textura = coordenadas del MUNDO / tamaño de la repetición:
+    así la textura continúa de una celda a otra sin que se noten las uniones.
+    Va DENTRO de un glBegin(GL_QUADS)."""
     t = TEXTURAS[nombre][1]
     glNormal3f(0, 1, 0)
     glTexCoord2f(x0 / t, z0 / t); glVertex3f(x0, y, z0)
     glTexCoord2f(x0 / t, z1 / t); glVertex3f(x0, y, z1)
     glTexCoord2f(x1 / t, z1 / t); glVertex3f(x1, y, z1)
     glTexCoord2f(x1 / t, z0 / t); glVertex3f(x1, y, z0)
-
