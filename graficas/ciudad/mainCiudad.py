@@ -10,9 +10,10 @@ if __name__ == "__main__" and not __package__:
 
 from .mapa import MAPA, FILAS, COLS, CELL, es_calle, celda_a_mundo, SEMAFOROS
 from .decoracion import (cargar_modelos, generar_edificios, generar_decoracion, dibujar_banquetas,
-                         dibujar_edificios, dibujar_lineas, dibujar_arboles, dibujar_farolas)
+                         dibujar_edificios, dibujar_lineas, dibujar_arboles, dibujar_farolas,cargar_texturas, usar_textura, dejar_textura, quad_texturizado)
 from ..semaforo.semaforo import Semaforo, ControlSemaforos, iniciar_quadric
 from .modelosCiudad import configurar_luz, posicionar_luz
+from .cielo import cargar_cielo, dibujar_cielo
 
 
 semaforos = []              # objetos Semaforo (uno por cada entrada de mapa.SEMAFOROS)
@@ -54,6 +55,9 @@ ALTURA_MIN, ALTURA_MAX = 5.0, 120.0
 RADIO_MIN, RADIO_MAX = 10.0, 120.0
 VEL_GIRO, VEL_ALTURA, VEL_ZOOM = 1.0, 0.5, 0.5
 
+EXTENSION = 150.0
+NIEBLA_INICIO = 100.0
+NIEBLA_FIN = EXTENSION
 
 def aplicar_camara():
     global EYE_X, EYE_Z, UP_X, UP_Y, UP_Z
@@ -127,31 +131,53 @@ def Axis():
     glEnd()
     glLineWidth(1.0)
 
+def configurar_niebla():
+    glEnable(GL_FOG)
+    glFogi(GL_FOG_MODE, GL_LINEAR)
+    glFogf(GL_FOG_START, NIEBLA_INICIO)
+    glFogf(GL_FOG_END, NIEBLA_FIN)
+    glFogfv(GL_FOG_COLOR, (cielo[0] / 255, cielo[1] / 255, cielo[2] / 255, 1.0))
+
 
 def dibujar_suelo():
-    glColor3ub(*pasto)
+    if usar_textura('pasto'):
+        glBegin(GL_QUADS)
+        quad_texturizado(-EXTENSION, EXTENSION, -EXTENSION, EXTENSION, Y_SUELO, 'pasto')
+        glEnd()
+        dejar_textura()
+        return
+    glColor3ub(*pasto)               # respaldo: sin textura, color liso
     glBegin(GL_QUADS)
-    glVertex3f(-DIM_X, Y_SUELO, -DIM_Z)
-    glVertex3f(-DIM_X, Y_SUELO,  DIM_Z)
-    glVertex3f( DIM_X, Y_SUELO,  DIM_Z)
-    glVertex3f( DIM_X, Y_SUELO, -DIM_Z)
+    glVertex3f(-EXTENSION, Y_SUELO, -EXTENSION)
+    glVertex3f(-EXTENSION, Y_SUELO,  EXTENSION)
+    glVertex3f( EXTENSION, Y_SUELO,  EXTENSION)
+    glVertex3f( EXTENSION, Y_SUELO, -EXTENSION)
     glEnd()
+
 
 
 def dibujar_calles():
     m = CELL / 2
-    glColor3ub(*asfalto)
+    con_textura = usar_textura('asfalto')
+    if not con_textura:
+        glColor3ub(*asfalto)
     glBegin(GL_QUADS)              # un solo glBegin para todas las celdas (más rápido)
     for f in range(FILAS):
         for c in range(COLS):
             if es_calle(f, c):
                 x, z = celda_a_mundo(f, c)
-                glVertex3f(x - m, Y_CALLE, z - m)
-                glVertex3f(x - m, Y_CALLE, z + m)
-                glVertex3f(x + m, Y_CALLE, z + m)
-                glVertex3f(x + m, Y_CALLE, z - m)
+                if con_textura:
+                    quad_texturizado(x - m, x + m, z - m, z + m, Y_CALLE, 'asfalto')
+                else:
+                    glVertex3f(x - m, Y_CALLE, z - m)
+                    glVertex3f(x - m, Y_CALLE, z + m)
+                    glVertex3f(x + m, Y_CALLE, z + m)
+                    glVertex3f(x + m, Y_CALLE, z - m)
+
     glEnd()
-    # (en el inciso 9 esto pasa a una display list)
+    if con_textura:
+        dejar_textura()
+        # (en el inciso 9 esto pasa a una display list)
 
 
 def _compilar_lista():
@@ -173,6 +199,9 @@ def _compilar_lista():
 def preparar_ciudad():
     """Carga y genera todo lo de la ciudad. Llamar UNA vez, DESPUÉS de crear la ventana."""
     global semaforos, control, lista_ciudad
+    configurar_niebla()
+    cargar_cielo()
+    cargar_texturas()
     cargar_modelos()             # .obj de assets/ciudad (antes de generar_edificios)
     generar_edificios()          # usa random con semilla fija
     generar_decoracion()         # árboles y farolas (después de los edificios)
@@ -184,6 +213,7 @@ def preparar_ciudad():
 
 def dibujar_ciudad():
     """Dibuja la ciudad. Llamar en CADA frame, después de la cámara y la luz."""
+    dibujar_cielo()              # primero el cielo: lo demás se dibuja encima
     glCallList(lista_ciudad)     # suelo, calles, líneas, banquetas, edificios, árboles, farolas
     for s in semaforos:          # los semáforos cambian de color: se dibujan cada frame
         s.draw()

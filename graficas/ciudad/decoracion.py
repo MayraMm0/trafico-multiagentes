@@ -1,7 +1,12 @@
 import random
 from OpenGL.GL import *
+from OpenGL.raw.GLU import gluBuild2DMipmaps
 from .mapa import MAPA, FILAS, COLS, CELL, FLECHAS, en_mapa, es_calle, celda_a_mundo
 from . import modelosCiudad as modelos
+import os
+import pygame
+from OpenGL.GLU import gluNewQuadric, gluQuadricNormals, gluCylinder, gluSphere, GLU_SMOOTH
+
 
 SEMILLA = 42                     # misma semilla -> misma ciudad cada vez
 Y_BANQUETA = 0.15                # más alta que la calle (0.05)
@@ -39,6 +44,38 @@ edificios = []                   # se llena UNA vez en generar_edificios()
 especiales = []                  # modelos colocados en manzanas
 manzanas = []
 
+# lineas de la calle
+Y_LINEA = 0.10                                # entre calle (0.05) y banqueta (0.15)
+COLOR_AMARILLO = (240, 200, 40)
+COLOR_BLANCO = (240, 240, 240)
+ANCHO_LINEA = 0.12                            # cada línea de la doble amarilla
+SEPARACION_DOBLE = 0.15                       # hueco entre las dos amarillas
+FRANJA_ANCHO, FRANJA_HUECO, FRANJA_LARGO = 0.30, 0.30, 1.4   # cebra
+N_FRANJAS = 3                                 # por celda (6 por carril de 2 celdas)
+
+# arboles y farolasr
+
+PROB_ARBOL = 0.85                         # en cada celda '*' hay árbol con esta probabilidad
+COLOR_TRONCO = (0.42, 0.28, 0.16)
+COLORES_COPA = [(0.20, 0.55, 0.20), (0.25, 0.62, 0.25), (0.15, 0.45, 0.18), (0.32, 0.60, 0.22)]
+
+ESPACIO_FAROLA = 5.0                      # metros entre farolas a lo largo de la banqueta
+MARGEN_FAROLA = 0.25                      # distancia al borde de la banqueta
+LIBRE_ESQUINA = 2.0                       # no poner farolas cerca de las esquinas (ahí van semáforos)
+ALTO_FAROLA, BRAZO_FAROLA = 4.0, 0.8
+COLOR_FAROLA = (0.30, 0.32, 0.35)
+COLOR_LAMPARA = (255, 240, 190)
+
+arboles = []
+farolas = []
+_q = None
+
+TEXTURAS = {
+    'pasto':    ('texturas/pasto5.png', 1.4),    #  metros de una repetición
+    'asfalto':  ('texturas/pavimento.png', 3.0),
+    'banqueta': ('texturas/banqueta.png', 1.9),
+}
+_tex = {}
 
 def encontrar_manzanas():
     """Agrupa las celdas '#' conectadas y regresa sus rectángulos (f0, f1, c0, c1)."""
@@ -148,12 +185,18 @@ def caja(x0, x1, y0, y1, z0, z1, color):
     glVertex3f(x0, y0, z0); glVertex3f(x0, y0, z1); glVertex3f(x0, y1, z1); glVertex3f(x0, y1, z0)
     glEnd()
 
-
 def dibujar_banquetas():
     for (f0, f1, c0, c1) in manzanas:
         x0, x1, z0, z1 = rect_a_mundo(f0, f1, c0, c1)
         caja(x0, x1, 0.0, Y_BANQUETA, z0, z1, COLOR_BANQUETA)
 
+    if usar_textura('banqueta'):
+        glBegin(GL_QUADS)
+        for (f0, f1, c0, c1) in manzanas:
+            x0, x1, z0, z1 = rect_a_mundo(f0, f1, c0, c1)
+            quad_texturizado(x0, x1, z0, z1, Y_BANQUETA + 0.005, 'banqueta')
+        glEnd()
+        dejar_textura()
 
 def dibujar_edificios():
     for e in edificios:
@@ -164,14 +207,6 @@ def dibujar_edificios():
                                  Y_BANQUETA, e['rot'])
 
 
-# lineas de la calle
-Y_LINEA = 0.10                                # entre calle (0.05) y banqueta (0.15)
-COLOR_AMARILLO = (240, 200, 40)
-COLOR_BLANCO = (240, 240, 240)
-ANCHO_LINEA = 0.12                            # cada línea de la doble amarilla
-SEPARACION_DOBLE = 0.15                       # hueco entre las dos amarillas
-FRANJA_ANCHO, FRANJA_HUECO, FRANJA_LARGO = 0.30, 0.30, 1.4   # cebra
-N_FRANJAS = 3                                 # por celda (6 por carril de 2 celdas)
 
 
 def quad_plano(x0, x1, z0, z1, color):
@@ -249,24 +284,8 @@ def dibujar_lineas():
     dibujar_pasos_peatonales()
 
 
-# arboles y farolas
-from OpenGL.GLU import gluNewQuadric, gluQuadricNormals, gluCylinder, gluSphere, GLU_SMOOTH
 
-PROB_ARBOL = 0.85                         # en cada celda '*' hay árbol con esta probabilidad
-COLOR_TRONCO = (0.42, 0.28, 0.16)
-COLORES_COPA = [(0.20, 0.55, 0.20), (0.25, 0.62, 0.25), (0.15, 0.45, 0.18), (0.32, 0.60, 0.22)]
-
-ESPACIO_FAROLA = 5.0                      # metros entre farolas a lo largo de la banqueta
-MARGEN_FAROLA = 0.25                      # distancia al borde de la banqueta
-LIBRE_ESQUINA = 2.0                       # no poner farolas cerca de las esquinas (ahí van semáforos)
-ALTO_FAROLA, BRAZO_FAROLA = 4.0, 0.8
-COLOR_FAROLA = (0.30, 0.32, 0.35)
-COLOR_LAMPARA = (255, 240, 190)
-
-arboles = []
-farolas = []
-_q = None
-
+#arboles y farolas
 
 def _quadric():
     global _q
@@ -373,3 +392,50 @@ def dibujar_farolas():
         gluSphere(q, 0.14, 8, 6)
         glPopMatrix()
         glPopMatrix()
+
+
+#texturas
+
+def cargar_texturas():
+    """UNA vez, después de crear la ventana y ANTES de compilar la display list."""
+    for nombre, (ruta, _) in TEXTURAS.items():
+        archivo = os.path.join(modelos.ASSETS, ruta)
+        try:
+            img = pygame.image.load(archivo)
+            datos = pygame.image.tostring(img, 'RGBA', 1)
+            ancho, alto = img.get_size()
+            tid = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, tid)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+            gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, ancho, alto, GL_RGBA, GL_UNSIGNED_BYTE, datos)
+            glBindTexture(GL_TEXTURE_2D, 0)
+            _tex[nombre] = tid
+        except Exception as e:
+            print(f"[decoracion] textura '{nombre}' no disponible ({archivo}): {e}. Uso color liso.")
+            _tex[nombre] = None
+
+def usar_textura(nombre):
+    """Activa la textura; regresa False si no existe (entonces se usa color)."""
+    tid = _tex.get(nombre)
+    if tid is None:
+        return False
+    glEnable(GL_TEXTURE_2D)
+    glBindTexture(GL_TEXTURE_2D, tid)
+    glColor3f(1.0, 1.0, 1.0)
+    return True
+
+def dejar_textura():
+    glBindTexture(GL_TEXTURE_2D, 0); glDisable(GL_TEXTURE_2D)
+
+def quad_texturizado(x0, x1, z0, z1, y, nombre):
+    """Quad plano dentro de un glBegin(GL_QUADS). Textura en coordenadas del MUNDO."""
+    t = TEXTURAS[nombre][1]
+    glNormal3f(0, 1, 0)
+    glTexCoord2f(x0 / t, z0 / t); glVertex3f(x0, y, z0)
+    glTexCoord2f(x0 / t, z1 / t); glVertex3f(x0, y, z1)
+    glTexCoord2f(x1 / t, z1 / t); glVertex3f(x1, y, z1)
+    glTexCoord2f(x1 / t, z0 / t); glVertex3f(x1, y, z0)
+
