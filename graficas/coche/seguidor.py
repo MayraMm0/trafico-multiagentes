@@ -7,7 +7,7 @@ from graficas.ciudad.mapa import FLECHAS, CELL, celda_a_mundo, girar_der, girar_
 from graficas.coche.carro import Carro
 from agentes.contrato import IZQ, DER
 
-ESCALA = 0.46
+ESCALA = 0.35
 ANGULO = {'>': 0.0, '^': 90.0, '<': 180.0, 'v': 270.0}   # Body_Ry según la flecha
 MUESTRAS = 16 # puntos para medir el largo de la curva
 RAMPA = 0.6 # m al inicio/fin del giro donde el volante se endereza
