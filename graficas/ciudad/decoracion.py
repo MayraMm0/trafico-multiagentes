@@ -1,12 +1,12 @@
 import random
 from OpenGL.GL import *
 from OpenGL.raw.GLU import gluBuild2DMipmaps
-from .mapa import MAPA, FILAS, COLS, CELL, FLECHAS, en_mapa, es_calle, celda_a_mundo
 from . import modelosCiudad as modelos
 import os
 import pygame
 from OpenGL.GLU import gluNewQuadric, gluQuadricNormals, gluCylinder, gluSphere, GLU_SMOOTH
-
+import math
+from .mapa import MAPA, FILAS, COLS, CELL, FLECHAS, BORDE, en_mapa, es_calle, celda_a_mundo
 
 SEMILLA = 42                     # misma semilla -> misma ciudad cada vez
 Y_BANQUETA = 0.15                # más alta que la calle (0.05)
@@ -25,6 +25,8 @@ PALETA = [
 
 # nombre -> archivo dentro de graficas/assets/ciudad/
 MODELOS = {
+    'arbol': 'decoracion/arbol.obj',
+    'hotdogs': 'decoracion/sausagesaloon/sausagesaloon.obj',
     'oxxo': 'oxxo/oxxo_listo.obj',
     'farmacia': 'farmacia/FarmaciaG_lista.obj',
     'vips': 'vips/vips_listo.obj',
@@ -81,7 +83,7 @@ _q = None
 
 TEXTURAS = {
     'pasto':    ('texturas/pasto.png', 1.4),
-    'asfalto':  ('texturas/asfalto.png', 3.0),
+    'asfalto':  ('texturas/pavimento.png', 3.0),
     'banqueta': ('texturas/banqueta.png', 1.9),
     # Fachadas de los edificios de cubos (una repetición = cuadrado de N metros)
     'building1': ('texturas/edificios/building1.png', 3.0),    # muro rojo con ladrillo expuesto
@@ -97,6 +99,7 @@ FACHADAS_BAJOS = ['building1', 'building2', 'building3']   # muros
 ALTURA_ALTO = 8.0                                          # metros: más alto que esto = "alto"
 COLOR_TECHO = (120, 120, 125)
 _tex = {}      # nombre -> id de OpenGL (o None si no se pudo cargar)
+
 
 
 def encontrar_manzanas():
@@ -527,3 +530,94 @@ def quad_texturizado(x0, x1, z0, z1, y, nombre):
     glTexCoord2f(x0 / t, z1 / t); glVertex3f(x0, y, z1)
     glTexCoord2f(x1 / t, z1 / t); glVertex3f(x1, y, z1)
     glTexCoord2f(x1 / t, z0 / t); glVertex3f(x1, y, z0)
+
+
+#afuera de la ciudad
+# --- Círculo de jacarandas ---
+ANILLO_MODELO = 'arbol'
+ANILLO_N = 40                    # cuántos árboles (algunos se saltan por las salidas de los coches)
+ANILLO_RADIO = 55.0              # metros del centro de la ciudad
+ANILLO_VARIACION = 4.0           # ± metros: que no quede un círculo perfecto
+ANILLO_ALTO = (6.0, 9.0)         # altura de cada árbol, en metros (al azar entre estos dos)
+
+# --- Objetos sueltos ---
+# 'pos': (x, z) en metros.  'rot': grados.  'mirar_centro': True = se gira solo hacia la ciudad
+# (y 'rot' se suma por si el frente del modelo no apunta hacia donde esperamos).
+OBJETOS_AFUERA = [
+    {'modelo': 'hotdogs', 'pos': (-31.0, 27.0), 'alto': 4.4, 'mirar_centro': True, 'rot': 0},
+    {'modelo': 'hotdogs', 'pos': (12.0, -28.0), 'alto': 4.4, 'mirar_centro': True, 'rot': 0},
+    {'modelo': 'hotdogs', 'pos': (-10.0, 30.0), 'alto': 4.4, 'mirar_centro': True, 'rot': 0},
+    {'modelo': 'hotdogs', 'pos': (-33.0, -8.0), 'alto': 2.5, 'mirar_centro': True, 'rot': 15},
+    {'modelo': 'hotdogs', 'pos': (33.0, 12.0), 'alto': 2.3, 'mirar_centro': True, 'rot': -15},
+]
+
+# Pasillos libres frente a las salidas de los coches (no se pone nada ahí)
+ANCHO_PASILLO = 4.0              # metros extra a cada lado del carril
+LARGO_PASILLO = 90.0             # metros hacia afuera desde la orilla de la ciudad
+
+alrededores = []                 # se llena UNA vez en generar_alrededores()
+
+
+def _pasillos_libres():
+    """Rectángulos (x0, x1, z0, z1) frente a cada borde abierto ('1') del mapa."""
+    m = CELL / 2
+    lim_x, lim_z = COLS * CELL / 2, FILAS * CELL / 2
+    zonas = []
+    for f in range(FILAS):
+        _, z = celda_a_mundo(f, 0)
+        if BORDE['izq'][f] == '1':
+            zonas.append((-lim_x - LARGO_PASILLO, -lim_x, z - m - ANCHO_PASILLO, z + m + ANCHO_PASILLO))
+        if BORDE['der'][f] == '1':
+            zonas.append((lim_x, lim_x + LARGO_PASILLO, z - m - ANCHO_PASILLO, z + m + ANCHO_PASILLO))
+    for c in range(COLS):
+        x, _ = celda_a_mundo(0, c)
+        if BORDE['arriba'][c] == '1':
+            zonas.append((x - m - ANCHO_PASILLO, x + m + ANCHO_PASILLO, -lim_z - LARGO_PASILLO, -lim_z))
+        if BORDE['abajo'][c] == '1':
+            zonas.append((x - m - ANCHO_PASILLO, x + m + ANCHO_PASILLO, lim_z, lim_z + LARGO_PASILLO))
+    return zonas
+
+
+def _libre(x, z, zonas):
+    return not any(x0 <= x <= x1 and z0 <= z <= z1 for x0, x1, z0, z1 in zonas)
+
+
+def _angulo_hacia_centro(x, z):
+    """Grados para que el frente del modelo (+Z local) mire al centro de la ciudad."""
+    return math.degrees(math.atan2(-x, -z))
+
+
+def generar_alrededores():
+    """UNA vez, después de cargar_modelos(). Usa su propio random (SEMILLA + 3)."""
+    rnd = random.Random(SEMILLA + 3)
+    zonas = _pasillos_libres()
+    alrededores.clear()
+
+    # Círculo de árboles
+    if modelos.existe(ANILLO_MODELO):
+        for i in range(ANILLO_N):
+            ang = 2 * math.pi * i / ANILLO_N + rnd.uniform(-0.05, 0.05)
+            r = ANILLO_RADIO + rnd.uniform(-ANILLO_VARIACION, ANILLO_VARIACION)
+            x, z = r * math.cos(ang), r * math.sin(ang)
+            alrededores.append({'modelo': ANILLO_MODELO, 'x': x, 'z': z,
+                                'rot': rnd.uniform(0, 360), 'alto': rnd.uniform(*ANILLO_ALTO)})
+
+    # Objetos sueltos
+    for o in OBJETOS_AFUERA:
+        if not modelos.existe(o['modelo']):
+            continue
+        x, z = o['pos']
+        rot = o.get('rot', 0) + (_angulo_hacia_centro(x, z) if o.get('mirar_centro') else 0)
+        if not _libre(x, z, zonas):
+            print(f"[decoracion] aviso: '{o['modelo']}' en {o['pos']} queda frente a una salida de coches")
+        alrededores.append({'modelo': o['modelo'], 'x': x, 'z': z, 'rot': rot, 'alto': o['alto']})
+
+    total = sum(modelos.vertices(a['modelo']) for a in alrededores)
+    print(f"[decoracion] alrededores: {len(alrededores)} objetos, ~{total} vértices")
+    if total > 400_000:
+        print("[decoracion] aviso: son muchos vértices; baja ANILLO_N o simplifica el modelo en Blender")
+
+
+def dibujar_alrededores():
+    for a in alrededores:
+        modelos.dibujar_escalado(a['modelo'], a['x'], a['z'], 0.0, a['rot'], a['alto'])

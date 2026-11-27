@@ -9,9 +9,10 @@ if __name__ == "__main__" and not __package__:
     __package__ = "graficas.ciudad"
 
 from .mapa import MAPA, FILAS, COLS, CELL, es_calle, celda_a_mundo, SEMAFOROS
-from .decoracion import (cargar_texturas, asignar_fachadas, usar_textura, dejar_textura, quad_texturizado,
+from .decoracion import (cargar_texturas, asignar_fachadas, generar_alrededores, dibujar_alrededores, usar_textura, dejar_textura, quad_texturizado,
                          cargar_modelos, generar_edificios, generar_decoracion, dibujar_banquetas,
                          dibujar_edificios, dibujar_lineas, dibujar_arboles, dibujar_farolas)
+
 from ..semaforo.semaforo import Semaforo, ControlSemaforos, iniciar_quadric
 from .modelosCiudad import configurar_luz, posicionar_luz
 from .cielo import cargar_cielo, dibujar_cielo
@@ -193,6 +194,7 @@ def _compilar_lista():
     dibujar_edificios()
     dibujar_arboles()
     dibujar_farolas()
+    dibujar_alrededores()
     glEndList()
     return lista
 
@@ -203,10 +205,11 @@ def preparar_ciudad():
     configurar_niebla()
     cargar_cielo()
     cargar_texturas()
-    cargar_modelos()             # .obj de assets/ciudad (antes de generar_edificios)
-    generar_edificios()          # usa random con semilla fija
-    asignar_fachadas()           # textura de fachada según la altura (después de cargar_texturas)
-    generar_decoracion()         # árboles y farolas (después de los edificios)
+    cargar_modelos()
+    generar_edificios()
+    asignar_fachadas()
+    generar_decoracion()
+    generar_alrededores()
     iniciar_quadric()
     semaforos = [Semaforo(s) for s in SEMAFOROS]
     control = ControlSemaforos(semaforos)

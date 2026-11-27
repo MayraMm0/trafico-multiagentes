@@ -64,6 +64,35 @@ def dibujar_ajustado(nombre, x0, x1, z0, z1, y, rot=0, escala_extra=1.0):
     glPopMatrix()
 
 
+def dibujar_escalado(nombre, x, z, y, rot=0, alto=None):
+    """Dibuja el modelo centrado en (x, z), parado en la altura y, girado rot grados en Y,
+    y escalado para que mida 'alto' METROS (su tamaño real). alto=None: tamaño original."""
+    m = _modelos[nombre]
+    s = (alto / m['alto']) if alto else 1.0
+
+    glPushMatrix()
+    glTranslatef(x, y, z)
+    glRotatef(rot, 0, 1, 0)
+    glScalef(s, s, s)
+    if m['swapyz']:
+        glScalef(1, 1, -1)              # misma corrección de espejo que en dibujar_ajustado
+    glTranslatef(-m['centro_x'], -m['base_y'], -m['centro_z'])
+
+    glEnable(GL_LIGHTING)
+    glEnable(GL_LIGHT0)
+    glEnable(GL_COLOR_MATERIAL)
+    glEnable(GL_NORMALIZE)
+    glShadeModel(GL_SMOOTH)
+    m['obj'].render()
+    glShadeModel(GL_FLAT)
+    glDisable(GL_LIGHTING)
+    glPopMatrix()
+
+
+def vertices(nombre):
+    return len(_modelos[nombre]['obj'].vertices)
+
+
 def posicionar_luz():
     """Llamar en cada frame, justo después de aplicar_camara()
     (si no, la luz se mueve con la cámara)."""
